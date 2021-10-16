@@ -8,9 +8,9 @@ Description:
 1. A Python base BitTorrent client supporting concurrent peer connections and multiple simultaneous torrent downloads.
 2. This project was an exercise of networking protocol called peer to peer protocol 
 
-**Overview ** :
+**Overview** :
 
-- **1.main.py **: this file is like menu which will access functionallity
+- **1.main.py**: this file is like menu which will access functionallity
 
 - **2.metainfo.py**: which is used to decode the bencoded .torrent file
 
