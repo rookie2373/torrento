@@ -6,6 +6,6 @@ Members
 
 ## Description
 This branch consists of code which is structured and follows clean coding principles.  
-This branch is updated via the 'standard' branch.  
+This branch is updated via the **standard** branch.  
 It does not have any errors.  
 Although we take care of bugs but they might get in.
