@@ -95,5 +95,4 @@ def repr_in_meta_struct():
     return temp_dict
 
 
-def get_piece_lenght(index, ):
-    pass
+
