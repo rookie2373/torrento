@@ -20,8 +20,6 @@ Members
 
 - **5.peer.py:** currently working
 
-- **5.client :** not done yet 
-
 - **6.Connection :** not done yet
 
 
