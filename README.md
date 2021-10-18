@@ -18,9 +18,11 @@ Members
 
 - **4.Config :** peer configurations
 
+- **5.peer.py:** currently working
+
 - **5.client :** not done yet 
 
-- **6.Conection :** not done yet
+- **6.Connection :** not done yet
 
 
 
