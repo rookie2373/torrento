@@ -1,4 +1,4 @@
-from torrent_metainfo import TorrentMetainfo
+from metainfo import TorrentMetainfo
 from tracker import client_request
 
 def get_metaifo(filename):
