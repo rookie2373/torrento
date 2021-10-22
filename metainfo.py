@@ -1,98 +1,185 @@
+# Script to decode the torrent metainfo file.
+
+# Import required modules
 import os
 import copy
 import hashlib
-from pprint import pformat
 import bencodepy
 import voluptuous as vol
 
-meta_struct = {}
+# The final metainfo passed to tracker request
+metaInfo = {}
 
-def TorrentMetainfo(bencoded_data):
-    # check file is empty or not
-    if not bencoded_data:
-        print("Error :file is empty")
+# for debugging
+debug = False
+megabyteFactor = 1048576
+
+# Function to get raw bencoded metadata
+def getRawFile(filename):
+    if(debug):
+        print(filename)
+    with open(filename,'rb') as file:
+        contents = file.read()
+        return contents
+
+# Function to process the raw torrent file
+def getTorrentMetaInfo(bencodeData):
+    # Check if the file is empty or not
+    if not bencodeData:
+        print("Error: File is empty")
+    # Start decoding the data
     else:
+        # decoding the bencoded data into an Ordered Dictionary
+        metaData = bencodepy.decode(bencodeData)
 
-        # deconding the bendcoded data into string
-        meta_data = bencodepy.decode(bencoded_data)
+        if(debug):
+            print(type(metaData))
 
-        # endcoding field has the string encoding format which is used to generate pieces part of info dictionary
-        encode = meta_data.get(b'encoding')
-        meta_struct['encoding'] = encode
+        # Get the string encoding format
+        encoding = metaData.get(b'encoding')
+        metaInfo['encoding'] = encoding
 
-        # meta_data contain accounce varible of dictionary which assigned the url of trackers
-        announce = meta_data.get(b'announce')
-        meta_struct['announce'] = announce
+        if(debug):
+            print(metaInfo['encoding'])
 
-        # meta_data also contain field creation date , comment , created by and announced_list
-        # but we are ignoring this field because these are optionals
+        # metaData contains announce variable of the dictionary 
+        # which is the assigned the url of trackers
+        announce = metaData.get(b'announce')
+        metaInfo['announce'] = announce
 
-        info = meta_data.get(b'info')  # info here is dictoctionaru
+        if(debug):
+            print(metaInfo['announce'])
 
-        # crypting the info using secure hash algorithm  and were digest return encoded data in bytes
-        info_hash = hashlib.sha1(bencodepy.encode(info)).digest()
-
-        info_data = decode_info(info)
-        meta_struct['info'] = info_data
-        meta_struct['info_hash'] = info_hash
-
-        return repr_in_meta_struct()
-
-
-def decode_info(info):
-    info_dict = {}
-    # piece length is number of byte in each piece
-    info_dict['piece_length'] = info[b'piece length']
-
-    Sha1_len = 20
-    # pieces consisisting of the concatenation of all 20-byte sha1 hash value
-    pieces = info[b'pieces']
-    pieces_list = []
-    for k in range(0, len(pieces), Sha1_len):
-        pieces_list.append(pieces[k:k + Sha1_len])  # making the each piece of 20 byte
-
-    info_dict['pieces'] = pieces_list
-
-    name = info[b'name'].decode('utf-8')
-
-    info_dict['name'] = name
-
-    files_dict = info.get(b'files')  # files is field which contains the key .i.e length , md5sum, path
-
-    # checking single or multiple file
-    if not files_dict:
-        info_dict['format'] = 'single file'
-        info_dict['files'] = None  # in single file mode there no dictionary for files
-        info_dict['length'] = info[b'length']
-    else:
-        info_dict['format'] = 'multiple file'
-        info_dict['file'] = []
+        # metaData also contains the fields creation date , comment , created by
+        # and announced_list but we are ignoring this field because these are optional
         
-        for j in files_dict[b'files']:
+        # the info dictionary of metainfo file
+        info = metaData.get(b'info')
+
+        # if(debug):
+        #     print(info)
+
+        # if(debug):
+        #     print(bencodepy.encode(info))
+
+        # encrypting the info using secure hash algorithm  
+        # and were digest return encoded data in bytes
+        infoHash = hashlib.sha1(bencodepy.encode(info)).digest()
+
+        # Processing the information of the actual file
+        infoData = processFileInfo(info)
+
+        # Appending info data and hash
+        metaInfo['info'] = infoData
+        metaInfo['info_hash'] = infoHash
+
+        return metaInfo
+
+# Function to process the info dictionary
+def processFileInfo(info):
+    # The final info dictionary
+    infoDict = {}
+
+    # piece length is number of bytes in each piece
+    infoDict['piece_length'] = info[b'piece length']
+
+    if(debug):
+        print(str(infoDict['piece_length']/megabyteFactor) + " MB")
+
+    # String consisting of the concatenation of all 20-byte sha1 hash values
+    # one per piece 
+    Sha1_len = 20
+    pieces = info[b'pieces']
+
+    if(debug):
+        print(type(pieces))
+
+    # Splitting the "pieces" into the individual hashes of each piece
+    piecesList = []
+    for offset in range(0, len(pieces), Sha1_len):
+        piecesList.append(pieces[offset:offset + Sha1_len]) 
+
+    # Appending the pieces_list 
+    infoDict['pieces'] = piecesList
+
+    # if(debug):
+    #     print(info_dict['pieces'])
+
+    # Appending the name of the file
+    name = info[b'name'].decode('utf-8')
+    infoDict['name'] = name
+
+    if(debug):
+        print(infoDict['name'])
+
+    # files is field which contains the keys .i.e length , md5sum, path
+    # It is only non void if there are multiple files
+    filesDict = info.get(b'files')
+
+    # if(debug):
+    #     print(files_dict)  
+
+    # checking if the file single or there are multiple files
+    if not filesDict:
+        # Appending data for a single file
+        infoDict['format'] = 'single file'
+        infoDict['files'] = None  # Single File
+        infoDict['length'] = info[b'length']
+
+        if(debug):
+            print(str(infoDict['length']/megabyteFactor) + " MB")
+
+    else:
+        # Appending data for multiple files
+        infoDict['format'] = 'multiple file'
+        infoDict['files'] = []
+        
+        # Extracting multiple files' data
+        for file in filesDict:
+            # path field containing one or more string which
+            # represents path and filename which in bencoded
             Path = []
-            # path field conataining one or more string which presents path and filename which in bencoded
-            for k in j[b'path']:
-                Path.append(k.decode('utf-8'))
-            info_dict['files'].append(
+
+            # if(debug):
+            #     print(file)
+            #     print()
+            #     print()
+            #     print()
+
+            # Joining the path
+            for location in file[b'path']:
+                Path.append(location.decode('utf-8'))
+
+                # if(debug):
+                #     print(location)
+
+            # Creating the files dictionary
+            infoDict['files'].append(
                 {
-                    'length': j[b'length'],
+                    'length': file[b'length'],
                     'path': os.path.join(*Path)
                 }
             )
-        info_dict['length'] = sum(f['length'] for f in info_dict['files'])
 
-    return info_dict
+        if(debug):
+            print(infoDict["files"])
+
+        # Over all size of all files
+        length = sum(file["length"] for file in infoDict['files'])
+        infoDict['length'] = length
+
+        if(debug):
+            print(str(infoDict['length']/megabyteFactor) + " MB")
+
+    return infoDict
 
 
 # it will represent the meta dict in structured format
-def repr_in_meta_struct():
-    # coping the orignal info_dict
-    temp_dict = copy.deepcopy(meta_struct)
-    if len(temp_dict['info']['pieces']) > 3:
-        temp_dict['info']['pieces'] = temp_dict['info']['pieces'][:3] + ['...']
-    if temp_dict['info']['files'] and len(temp_dict['info']['files']) > 3:
-        temp_dict['info']['files'] = temp_dict['info']['files'][:3] + ['...']
-    return temp_dict
-
-
-
+# def repr_in_metaInfo():
+#     # coping the orignal info_dict
+#     temp_dict = copy.deepcopy(metaInfo)
+#     if len(temp_dict['info']['pieces']) > 3:
+#         temp_dict['info']['pieces'] = temp_dict['info']['pieces'][:3] + ['...']
+#     if temp_dict['info']['files'] and len(temp_dict['info']['files']) > 3:
+#         temp_dict['info']['files'] = temp_dict['info']['files'][:3] + ['...']
+#     return temp_dict
