@@ -1,38 +1,50 @@
+# Script to send request to tracker and record the response
+
+# Import required modules
 import struct
 import requests
 import bencodepy
-import logging
 
+# Configuration file
 from config import CONFIG
 
-log = logging.getLogger(__name__)  # detecting the erroe in modulw which are imported
+# For debugging
+debug = False
 
+# Connecting to tracker
 
-# connecting to trackers
-
-# sending the anncounce request using http get request
-def client_request(torrent, announce):
-    resp = requests.get(announce, {
-        'info_hash':torrent['info_hash'],
+# Function to send announce request to the tracker
+def clientRequest(metaInfo):
+    announce = metaInfo["announce"]
+    response = requests.get(announce, {
+        'info_hash':metaInfo['info_hash'],
         'peer_id': CONFIG['peer_id'],
         'port': 6881,  # range (6881,6889)
         'uploaded': '0',  # total amount of upload
         'downloaded': '0',  # total amount of downloud
-        'left': str(torrent['info']['length']),
-        # 'numwant': CONFIG['maxx_peers']
+        'left': str(metaInfo['info']['length']),
+        # 'numwant': CONFIG['max_peers']
     })
 
-    trackers_response(torrent, resp)
+    # if(debug):
+    #     print(response,response.text)
 
+    trackerResponse(metaInfo, response)
 
-def trackers_response(torrent, http_resp):
-    # The tracker responds with "text/plain" document consisting of a bencoded dictionary
+# Function to record tracker's response
+def trackerResponse(torrent, http_resp):
+    # The tracker responds with "text/plain" document 
+    # consisting of a bencoded dictionary
+    trackResp = bencodepy.decode(http_resp.text.encode('latin-1'))
 
-    track_resp = bencodepy.decode(http_resp.text.encode('latin-1'))
-    resp_dict = decode_each_resp(track_resp)
-    print(resp_dict['peers'])
+    if(debug):
+        print(trackResp)
 
-    for peer_dict in resp_dict['peers']:
+    # Constructing the response in form of dictionary
+    respDict = decodeResponse(trackResp)
+    print(respDict['peers'])
+
+    for peer_dict in respDict['peers']:
         # if peers ip and port is correct then add this peer to torrent
 
         """
@@ -41,45 +53,72 @@ def trackers_response(torrent, http_resp):
             #torrent.add_peer(peer_dict)
             """
 
-def decode_each_resp(track_resp):
-    resp_dict = {}
-    # checking if there is failure in resp also there warning massage but its optional
-    if b'failure reason' in track_resp:
-        print(track_resp[b'failure reason'].decode('utf-8'))
+# Function to construct the response dictionary
+def decodeResponse(trackResp):
+    respDict = {}
+    # checking if there is failure in resp
+    if b'failure reason' in trackResp:
+        print(trackResp[b'failure reason'].decode('utf-8'))
 
-    # interval such that client should wait before sending the next request to the tracker
-    resp_dict['interval'] = int(track_resp[b'interval'])
+    # interval that the client should wait before 
+    # sending the next request to the tracker
+    respDict['interval'] = int(trackResp[b'interval'])
+
+    if(debug):
+        print(respDict['interval'])
 
     # number of peers i.e  seeders (integer)
-    if b'complete' in track_resp:
-        resp_dict['complete'] = int(track_resp[b'complete'])
+    if b'complete' in trackResp:
+        respDict['complete'] = int(trackResp[b'complete'])
     else:
-        resp_dict['complete'] = None
+        respDict['complete'] = None
+    
+    if(debug):
+        print(respDict['complete'])
 
     # numbers of non seeder peers
-    if b'incomplete' in track_resp:
-        resp_dict['incomplete'] = int(track_resp[b'incomplete'])
+    if b'incomplete' in trackResp:
+        respDict['incomplete'] = int(trackResp[b'incomplete'])
     else:
-        resp_dict['complete'] = None
+        respDict['complete'] = None
+    
+    if(debug):
+        print(respDict['incomplete'])
 
-    # a string tha the client should send back to its next announcement
-    if b'tracker_id' in track_resp:
-        resp_dict['tracker_id'] = int(track_resp[b'tracker_id'])
+    # A string tha the client should send back to its next announcement
+    if b'tracker_id' in trackResp:
+        respDict['tracker_id'] = int(trackResp[b'tracker_id'])
     else:
-        resp_dict['complete'] = None
+        respDict['tracker_id'] = None
+    
+    if(debug):
+        print(respDict['tracker_id'])
 
-    peers = track_resp[b'peers']
+    # The peers (contain ip address and port no.)
+    peers = trackResp[b'peers']
 
-    # checking if peer list the use dict model for decoding and for binary use binary model of decode
+    if(debug):
+        print("Peers are:",peers)
+
+    # Appending the peer list
+    respDict['peers'] = decodePeerList(peers)
+
+    return respDict
+
+# Function to decode peer list
+def decodePeerList(peers):
+    peerList = {}
+    # checking if peer list uses dict model or binary model 
+    # and decoding them accordingly
     if isinstance(peers, list):
-        resp_dict['peers'] = decode_for_dict_model(peers)
+        peerList = decode_for_dict_model(peers)
     elif isinstance(peers, bytes):
-        resp_dict['peers'] = decode_for_binary_model(peers)
+        peerList = decode_for_binary_model(peers)
     else:
         print('Error : Not formatable ')
-    return resp_dict
+    return peerList
 
-
+# Function to decode peer list for dictionary model
 def decode_for_dict_model(list_peers):
     peer_dict = {}
     for peer in list_peers:
@@ -89,10 +128,13 @@ def decode_for_dict_model(list_peers):
 
     return peer_dict
 
-
+# Function to decode peer list for binary model
 def decode_for_binary_model(bytes_peers):
     no_of_bytes = '!BBBBH'
     byte_size = struct.calcsize(no_of_bytes)
+
+    if(debug):
+        print(byte_size)
     # checking the resp binary model contain 6 bytes or not
     if len(bytes_peers) % byte_size != 0:
         print('Error: invalid length')
