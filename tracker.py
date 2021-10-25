@@ -32,14 +32,10 @@ def trackers_response(torrent, http_resp):
     resp_dict = decode_each_resp(track_resp)
     print(resp_dict['peers'])
 
-    for peer_dict in resp_dict['peers']:
+        for peer_dict in resp_dict['peers']:
         # if peers ip and port is correct then add this peer to torrent
-
-        """
-        if peer_dict['ip'] and peer_dict['port'] > 0:
-            print(peer_dict)
-            #torrent.add_peer(peer_dict)
-            """
+            if peer_dict['ip'] and peer_dict['port'] > 0:
+                torrent.make_peerlist(peer_dict)
 
 def decode_each_resp(track_resp):
     resp_dict = {}
