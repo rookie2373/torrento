@@ -1,5 +1,7 @@
-from metainfo import TorrentMetainfo
+from torrent_metainfo import TorrentMetainfo
 from tracker import client_request
+from connection import con_menu
+from torrent import Client_Torrent
 
 def get_metaifo(filename):
     print(filename)
@@ -9,8 +11,8 @@ def get_metaifo(filename):
 
 
 if __name__ == '__main__':
-    filename = "./Torrentfiles/flagfromserver.torrent"
-    contents = get_metaifo(filename)
+    filename = r"C:\CN\Bittorrent_project\share\flagfromserver.torrent"
+    contents = get_metainfo(filename)
     metainfo = TorrentMetainfo(contents)
-
-    client_request(metainfo,metainfo['announce'])
+    torr = Client_Torrent(metainfo,con_menu)
+    client_request(torr,metainfo,metainfo['announce'])
