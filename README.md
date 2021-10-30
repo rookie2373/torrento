@@ -18,9 +18,9 @@ Members
 
 - **4.Config :** peer configurations
 
-- **5.peer.py:** currently working
+- **5.peer.py:** currently working with handshake
 
-- **6.Connection :** not done yet
+- **6.Connection :** Currenty working with connections (for multiple connection using threading)
 
 
 

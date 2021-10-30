@@ -44,15 +44,6 @@ def trackerResponse(torrent, http_resp):
     respDict = decodeResponse(trackResp)
     print(respDict['peers'])
 
-    for peer_dict in respDict['peers']:
-        # if peers ip and port is correct then add this peer to torrent
-
-        """
-        if peer_dict['ip'] and peer_dict['port'] > 0:
-            print(peer_dict)
-            #torrent.add_peer(peer_dict)
-            """
-
 # Function to construct the response dictionary
 def decodeResponse(trackResp):
     respDict = {}
