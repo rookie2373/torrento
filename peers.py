@@ -31,12 +31,12 @@ class Peers():
     def make_handshake(self,info_hash,peer_id):
         pstr = b'BitTorrent protocol'
         format = '!B%ds8X20s20s' % len(pstr)
-        data = struct.pack(format,len(pstr),info_hash,peer_id)
+        data = struct.pack(format,len(pstr),pstr,info_hash,peer_id)
         return data
 
     def send_msg(self,data):
         if self.con:
-            self.con.add_msg(data)
+            self.con.add_data(data)
 
     def handle_failed_con(self):
         self.connect_failed = 1
