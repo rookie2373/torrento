@@ -25,6 +25,7 @@ class Peers():
         self.torr.con_menu.conn_peer(self)  # here self is my peer
 
     def handshake(self):
+        print("Sending handshake")
         resp = self.make_handshake(self.torr.meta_struct['info_hash'],CONFIG['peer_id'])
         self.send_msg(resp)
 
@@ -51,21 +52,34 @@ class Peers():
     def pass_msg(self,msg_type):
         msg = self.make_msg(msg_type)
         self.send_msg(msg)
+    
+    
+    def parse_hand_resp(self,data):
+        # check it is in correct format  or not
+        pstrlen = int(data[0])
+        remaining_data = data[1:49 + pstrlen]
+        format = '!%ds8x20s20s' % pstrlen
+        res = struct.unpack(format,remaining_data)
+        print(res)
+        dec_dict = {}
+        dec_dict['pstr'] = res[0].decode('utf')
+        dec_dict['info_hash'] = res[1]
+        dec_dict['peed_id'] = res[2]
+
+        if dec_dict['pstr'] == 'BitTorrent protocol':
+            self.connect_start = 1 # handshake resp is correct so connction with peer is established
+            print("recv handshake")
 
 
-    def make_msg(self,msg_type):
-        msg_No = None
-        if msg_type == 'choke':
-            msg_No=0 #fixed length no payload
-        elif msg_type == 'unchoke':
-            msg_No=1 #fixed length no payload
-        elif msg_type == 'interested':
-            msg_No=2 #fixed length no payload
-        elif msg_type == 'not interested':
-            msg_No = 3 #fixed length no payload
-        msg = struct.pack('%d',msg_No)
 
-        return msg
+
+
+    def handshake_resp(self,resp):
+        # parsing the handshake resp according the formate as we send
+        if not self.connect_start:
+            self.parse_hand_resp(resp)
+        else:
+            print("Handshake is already done")
 
 
 
@@ -73,8 +87,7 @@ class Peers():
         # check if is handshake is done or not
         if not self.connect_start:
             self.handshake()
-        elif self.peer_choking:
-            self.pass_msg('interested')
+        
 
 
 
