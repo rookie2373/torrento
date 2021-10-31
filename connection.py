@@ -1,8 +1,7 @@
 import socket
 import threading
+
 # connecting peers using tcp
-
-
 
 
 class conn_using_thread():
@@ -62,7 +61,8 @@ class main_connection():
 
         if data:
             self.recv.append(data)
-            self.peer.handshake_resp(data)
+            self.peer.Peer_resp(data)
+
 
 
 
