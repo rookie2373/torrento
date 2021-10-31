@@ -13,8 +13,8 @@ class Peers():
         self.torr = torr
 
         # maintaining the information of each connection of remote peer
-        self.am_choking = 1
-        self.am_interested = 0
+        self.choking = 1
+        self.interested = 0
         self.peer_choking = 1
         self.peer_interested = 0
         self.connect_failed = 0
@@ -53,6 +53,26 @@ class Peers():
         msg = self.make_msg(msg_type)
         self.send_msg(msg)
     
+    def make_msg(self,msg_type):
+        #all remaining msg is of the type <length prefix><message ID><payload>
+        msg_No = None  # massage ID is single byte decimal
+        payload = b''# payload is massage dependent
+        if msg_type == 'choke':
+            msg_No=0 #fixed length no payload
+        elif msg_type == 'unchoke':
+            msg_No=1 #fixed length no payload
+        elif msg_type == 'interested':
+            msg_No=2 #fixed length no payload
+        elif msg_type == 'not interested':
+            msg_No = 3 #fixed length no payload
+
+        # length prefix is four byte big-endian value
+        # but observe that it is  0001 when payload is empty but changes when payload length is not empty
+        length_prefix = len(payload)+1
+        format  = '!lB%ds' %len(payload) # B->unsigned char , l -> long , s-> char
+        msg = struct.pack(format,length_prefix,msg_No,payload)
+
+        return msg
     
     def parse_hand_resp(self,data):
         # check it is in correct format  or not
@@ -69,17 +89,44 @@ class Peers():
         if dec_dict['pstr'] == 'BitTorrent protocol':
             self.connect_start = 1 # handshake resp is correct so connction with peer is established
             print("recv handshake")
+           # so handshake is ok now we can run downloading 
+            self.downloading()
+            
+    
+    # not cover this case yet
+    def keep_alive_resp(self):
+        pass
+
+
+    def parse_msg_resp(self,msg):
+
+        self.msg_dict = {}  # dict to store
+        # extract length prefix
+        length_prefix = struct.unpack('!L', msg[:4])[0] # taking first four byte from resp tuple
+        self.msg_dict['length_prefix'] = length_prefix
+
+        if length_prefix == 0:
+            # keep alive massage
+            self.keep_alive_resp()
+
+
+        data = msg[4:4+length_prefix]
+        msg_no = int(data[0])
+        payload = data[1:]
+        self.msg_dict['msg_no'] = msg_no
+        self.msg_dict['payload'] = payload
+        print(self.msg_dict)
 
 
 
 
-
-    def handshake_resp(self,resp):
+    def Peer_resp(self,resp):
         # parsing the handshake resp according the formate as we send
         if not self.connect_start:
             self.parse_hand_resp(resp)
         else:
-            print("Handshake is already done")
+            # peers is already done handshake not receiving respense
+            self.parse_msg_resp(resp)
 
 
 
@@ -87,8 +134,5 @@ class Peers():
         # check if is handshake is done or not
         if not self.connect_start:
             self.handshake()
-        
-
-
-
-
+        elif self.choking:
+            self.pass_msg('interested')
