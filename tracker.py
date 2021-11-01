@@ -46,7 +46,8 @@ def trackerResponse(torrent, http_resp):
 
     for peer_d in peer_list:
         if peer_d['ip'] and peer_d['port']>0:
-            torrent.make_peerlist(peer_d)
+            pass
+            # torrent.make_peerlist(peer_d)
             
 
 # Function to construct the response dictionary
@@ -116,7 +117,7 @@ def decodePeerList(peers):
 
 # Function to decode peer list for dictionary model
 def decode_for_dict_model(list_peers):
-     peer_list = []
+    peer_list = []
     for peer in list_peers:
         peer_dict = {}
         peer_dict['ip'] = peer[b'ip'].decode('utf-8')
@@ -140,10 +141,13 @@ def decode_for_binary_model(bytes_peers):
     # extracting the peers
     for i in range(0, len(bytes_peers), byte_size):
         peers.append(struct.unpack_from(no_of_bytes, bytes_peers, offset=i))
-    dict_peers = {}
+    list_peers = []
     # besically peer has 4 byte ip add and 2 byte of port number
     for k in peers:
-        dict_peers['ip'] = '%d.%d.%d.%d' % k[:4]
-        dict_peers['port'] = int(k[4])
+        peer_dict = {}
+        peer_dict['ip'] = '%d.%d.%d.%d' % k[:4]
+        peer_dict['port'] = int(k[4])
+        list_peers.append(peer_dict)
 
-    return dict_peers
+    print(list_peers)
+    return list_peers
