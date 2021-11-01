@@ -3,6 +3,10 @@
 # Import data
 from datafiles import torrentfiles
 import subprocess
+import os
+
+# make a debug directory
+os.system("mkdir debug")
 
 for file in torrentfiles:
     # Construct command and file location
