@@ -1,4 +1,4 @@
-# Script to ease testing
+# Script that stores torrent files to be tested
 
 # Array of torrent files
 torrentfiles = [
