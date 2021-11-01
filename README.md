@@ -18,9 +18,9 @@ Members
 
 - **4.Config :** peer configurations
 
-- **5.peer.py:** currently working with handshake
+- **5.peer.py:** making handshake and requesting the peers
 
-- **6.Connection :** Currenty working with connections (for multiple connection using threading)
+- **6.Connection :**  making connections with multiple peers at same timee (for multiple connection using threading)
 
 
 
