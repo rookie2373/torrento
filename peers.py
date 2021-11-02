@@ -20,6 +20,17 @@ class Peers():
         self.connect_failed = 0
         self.con = None
         self.connect_start = 0
+        self.peer_piece_list = []
+        self.set_peer_piece_list(self.torr)
+        self.request_piece = 0
+
+        # making list of all msg_types according the there msg id as index
+        self.msg_types = ['choke', 'unchoke', 'interested', 'not_interested', 'have', 'bitfield', 'request', 'piece',
+                         'cancel', 'port']
+
+    def set_peer_piece_list(self,torr):
+        for i in range(len(torr.meta_struct['info']['pieces'])):
+            self.peer_piece_list.append(0)
 
     def make_conn(self):
         self.torr.con_menu.conn_peer(self)  # here self is my peer
@@ -65,6 +76,10 @@ class Peers():
             msg_No=2 #fixed length no payload
         elif msg_type == 'not interested':
             msg_No = 3 #fixed length no payload
+        elif msg_type == 'have':
+            msg_No = 4  # fixed length
+        elif msg_type == 'bitfield':
+            msg_No = 5  # fixed length
 
         # length prefix is four byte big-endian value
         # but observe that it is  0001 when payload is empty but changes when payload length is not empty
@@ -116,6 +131,28 @@ class Peers():
         self.msg_dict['msg_no'] = msg_no
         self.msg_dict['payload'] = payload
         print(self.msg_dict)
+        self.set_peer_status(msg_dict,msg_type)
+    
+    
+    def set_peer_status(self,msg_dict,msg_type):
+        # checking msg resp
+        if msg_type == 'choke' :
+            self.peer_choking =1
+        elif msg_type == 'unchoke':
+            self.peer_choking = 0
+        elif msg_type == 'interested':
+            self.peer_interested = 1
+        elif  msg_type == 'not_interested':
+            self.peer_interested = 0
+        elif msg_type == 'have':
+            (indx,) = struct.unpack('!L',msg_dict['payload'])# taking the index of the pieces the peers have
+            self.peer_piece_list[indx] = 1 # setting the index of pieces that peer have
+
+        elif msg_type == 'bitfield':
+            payload = msg_dict['payload'] #  The payload is a bitfield representing the pieces that have been successfully downloaded
+            res = bin(int.from_bytes(payload, byteorder=sys.byteorder)) # converting bytes to binary
+            self.peer_piece_list = [int(res[i]) for i in range(2,len(self.torr.meta_struct['info']['pieces'])+2)] # here 1 is  indicates the pieces the peer has
+        self.downloading()
 
 
 
