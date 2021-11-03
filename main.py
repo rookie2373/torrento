@@ -30,3 +30,4 @@ if __name__ == '__main__':
 #     metainfo = getTorrentMetaInfo(contents)
 #     torr = Client_Torrent(metainfo,con_menu)
 #     client_request(torr,metainfo,metainfo['announce'])
+#     con_menu.start_loop()
