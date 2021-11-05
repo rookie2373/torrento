@@ -1,6 +1,6 @@
 from config import CONFIG
 from peers import Peers
-
+from torr_download import torr_Download
 
 class Client_Torrent():
 
@@ -11,11 +11,20 @@ class Client_Torrent():
         self.peer_list =[] # peer object list
         self.trackers = None
         self.complete = False
+        self.torr_down = None
+        self.piece_request = [[] for i in self.meta_struct['info']['pieces']] # creating the empty list for each piece into the one list
 
 
     def torrent_conn(self):
-        for p in self.peer_list[CONFIG['max_peers']]:
-            p.make_conn()
+        l = len(self.peer_list)
+        torr_obj = torr_Download(self.peer_list[l-1],self)
+        self.torr_down = torr_obj
+        self.peer_list[l - 1].make_conn()
+        """
+        while(l):
+            self.peer_list[l-1].make_conn()
+            l-=1
+            """
 
     def make_peerlist(self,peer_dict):
         each_peer = self.check_peer(**peer_dict) # if it is already present
