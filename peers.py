@@ -196,7 +196,7 @@ class Peers():
             # request new piece as peer unchock the client that is we
             piece_inx = self.new_piece()
             self.request_piece = piece_inx
-            self.torr.piece_request[piece_inx].append(self)
+            self.torr.piece_request[piece_inx].append(self)# here we appending object of peers so that each peer can request new index
             self.request_Block(piece_inx) # as piece length is so large that we cannot request whole piece at once
             # hence we requesting the piece in chunks we called as block
 
@@ -208,9 +208,10 @@ class Peers():
 
 
     def new_piece(self):
-        for piece_inx in range(self.pieces_length):
-            if (self.peer_piece_list[piece_inx]):
-                return piece_inx
+               for piece_inx in range(self.pieces_length):
+            # here we are checking that is current peer has the piece or not and also if that piece is already requested by another peer then we go  for next piece
+                if (self.peer_piece_list[piece_inx] and not self.torr.piece_request[piece_inx]):
+                    return piece_inx
 
     def set_peer_status(self, msg_dict, msg_type):
         # checking msg resp
