@@ -31,8 +31,8 @@ class Client_Torrent():
         peer = Peers(self,**peer_dict) # here self is torrent obj
         self.peer_list.append(peer)
         return peer
-
-    def check_peer(self,ip,port,**kwargs):
+     # if peer id is pass as para then it get assign otherwise it default value is None
+    def check_peer(self,ip,port,peer_id=None):
         for peers in (self.present_peer,self.peer_list):
             for i in peers:
                 if i.ip == ip and i.port == port:
