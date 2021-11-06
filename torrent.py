@@ -17,14 +17,11 @@ class Client_Torrent():
 
     def torrent_conn(self):
         l = len(self.peer_list)
-        torr_obj = torr_Download(self.peer_list[l-1],self)
-        self.torr_down = torr_obj
-        self.peer_list[l - 1].make_conn()
-        """
-        while(l):
-            self.peer_list[l-1].make_conn()
-            l-=1
-            """
+        peer_count = 0
+        while(peer_count<CONFIG['max_peers']):
+            self.peer_list[peer_count].make_conn()
+            self.torr_down = self.torr_down_list[peer_count]
+            peer_count += 1
 
     def make_peerlist(self,peer_dict):
         each_peer = self.check_peer(**peer_dict) # if it is already present
