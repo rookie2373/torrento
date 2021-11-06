@@ -48,13 +48,19 @@ class torr_Download():
         for k in self.chunks[piece_inx]:
             blocks.append(k[1])
 
-        piece_sha = bytes( y for x in blocks for y in x)
+        current_piece = bytes(y for x in blocks for y in x)
+        for u in self.chunks[piece_inx]:
+            print(u[0])
+        piece_sha =  hashlib.sha1(current_piece).digest()
+
         file_shas = self.torr.meta_struct['info']['pieces']
         curr_inx_sha = file_shas[piece_inx]
 
         if piece_sha != curr_inx_sha :
             print("Sha doesn't  match")
             return
+        else:
+            print("match")
 
 
 
