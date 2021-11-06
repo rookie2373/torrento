@@ -44,11 +44,15 @@ def trackerResponse(torrent, http_resp):
     respDict = decodeResponse(trackResp)
     peer_list = respDict['peers']
 
+    # for single peer 
+    if len(peer_list) ==2:  
+        torrent.make_peerlist(peer_list)
+        return
+    # for multiple peer
     for peer_d in peer_list:
         if peer_d['ip'] and peer_d['port']>0:
-            pass
-            # torrent.make_peerlist(peer_d)
-            
+            torrent.make_peerlist(peer_d)
+    return
 
 # Function to construct the response dictionary
 def decodeResponse(trackResp):
