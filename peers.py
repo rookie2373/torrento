@@ -27,7 +27,7 @@ class Peers():
         self.set_peer_piece_list()
         self.request_piece = 0
         self.buffer = b'' # concanate the data if it comes in pieces
-        self.starting_point = 0
+        
 
         # making list of all msg_types according the there msg id as index
         self.msg_types = ['choke', 'unchoke', 'interested', 'not_interested', 'have', 'bitfield', 'request', 'piece',
@@ -80,6 +80,7 @@ class Peers():
             msg_type = arguments['msg_type']
             piece_inx = arguments['piece_inx']
             block_length = arguments['block_length']
+            starting_point = arguments['starting_point']
 
 
         # all remaining msg is of the type <length prefix><message ID><payload>
@@ -99,7 +100,7 @@ class Peers():
             msg_No = 5  # fixed length
         elif msg_type == 'request':
             msg_No = 6
-            payload = struct.pack('!LLL',piece_inx,self.starting_point,block_length)
+            payload = struct.pack('!LLL',piece_inx,starting_point,block_length)
 
         # length prefix is four byte big-endian value
         # but observe that it is  0001 when payload is empty but changes when payload length is not empty
@@ -197,13 +198,16 @@ class Peers():
             piece_inx = self.new_piece()
             self.request_piece = piece_inx
             self.torr.piece_request[piece_inx].append(self)# here we appending object of peers so that each peer can request new index
-            self.request_Block(piece_inx) # as piece length is so large that we cannot request whole piece at once
+            self.request_Block(piece_inx,None) # as piece length is so large that we cannot request whole piece at once
             # hence we requesting the piece in chunks we called as block
 
-    def request_Block(self,p_indx):
+    def request_Block(self,p_indx,start_pt):
         #len_piece = self.torr.meta_struct['info']['piece_length']
-        
-        self.pass_msg( msg_type = 'request',piece_inx = p_indx, block_length = CONFIG['block_length'])
+        if start_pt==None:
+            starting_point=0
+        else:
+            starting_point = start_pt + CONFIG['block_length']
+        self.pass_msg( msg_type = 'request',piece_inx = p_indx,starting_point=starting_point, block_length = CONFIG['block_length'])
 
 
 
@@ -235,10 +239,9 @@ class Peers():
             self.peer_piece_list = [int(res[i]) for i in
                                     range(2, self.pieces_length + 2)]  # here 1 is  indicates the pieces the peer has
         elif msg_type == 'piece':
-            starting_tuple = struct.unpack('LL', msg_dict['payload'][:8]) # taking first two byte
+            starting_tuple = struct.unpack('!LL', msg_dict['payload'][:8]) # taking first two byte
             piece_inx = starting_tuple[0]
             block_start = starting_tuple[1]
-            self.starting_point +=  CONFIG['block_length'] # increamenting the starting point
             payload = msg_dict['payload'][8:]
             self.torr.torr_down.check_block(piece_inx, block_start, payload)
         elif msg_type =='port':
