@@ -20,7 +20,7 @@ class torr_Download():
 
         for i in self.chunks[piece_inx]:
             if i[0] == chunk_start: # if starting point of recv block is already present then we request next block
-                self.peer.request_Block(piece_inx)
+               self.peer.request_Block(piece_inx,chunk_start)
                 return
 
         self.chunks[piece_inx].append((chunk_start,payload)) # storing the tuple of starting point pf paylosd with payload
@@ -32,7 +32,7 @@ class torr_Download():
             self.check_hashvalue(piece_inx)
         else:
             # here we change starting point of block
-            self.peer.request_Block(piece_inx) # requesting the next block as we requesting the pieces in blocks
+           self.peer.request_Block(piece_inx,chunk_start) # requesting the next block as we requesting the pieces in blocks
             pass
 
     #adding the each blocks length
