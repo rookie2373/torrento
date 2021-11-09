@@ -1,6 +1,6 @@
 import socket
 import threading
-import queue
+
 
 # connecting peers using tcp
 
@@ -53,7 +53,7 @@ class main_connection():
 
     def Tcp_connect(self):
         self.S = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.S.settimeout(3.0) # setting default timeout
+        self.S.settimeout(5.0) # setting default timeout
         try:
             self.S.connect((self.peer.ip, self.peer.port))
         except OSError:
@@ -77,7 +77,7 @@ class main_connection():
                         self.S.send(data)
                     except OSError:
                         self.connet_lost = 1
-                        print("Connection lost-send")
+                        print("Connection lost")
                     if self.connet_lost:
                         return
             except :
@@ -90,7 +90,7 @@ class main_connection():
         except BlockingIOError:
             return
         except ConnectionError:
-            print("connection lost-recv")
+            print("connection lost")
             return
         except socket.timeout:
             return
@@ -114,6 +114,7 @@ class threading_connection():
 
     def check(self):
         if self.recv_data:
+            self.recv_data.reverse() # to pop starting data from list 
             while self.recv_data:
                 data = self.recv_data.pop()
                 if data:
