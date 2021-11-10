@@ -1,4 +1,5 @@
-from  config import  CONFIG
+import hashlib
+from Write_data import Write_data
 
 class torr_Download():
     def __init__(self,peer,torr):
@@ -49,18 +50,68 @@ class torr_Download():
             blocks.append(k[1])
 
         current_piece = bytes(y for x in blocks for y in x)
-        for u in self.chunks[piece_inx]:
-            print(u[0])
-        piece_sha =  hashlib.sha1(current_piece).digest()
+        curr_piece_sha =  hashlib.sha1(current_piece).digest()
 
         file_shas = self.torr.meta_struct['info']['pieces']
-        curr_inx_sha = file_shas[piece_inx]
+        file_inx_sha = file_shas[piece_inx]
 
-        if piece_sha != curr_inx_sha :
+
+        if file_inx_sha != curr_piece_sha:
             print("Sha doesn't  match")
             return
         else:
-            print("match")
+            self.curr_piece_Complete(piece_inx,current_piece)
+            
+    def curr_piece_Complete(self,piece_inx,current_piece):
+
+        self.complete[piece_inx] = current_piece # storing the current piece
+        self.chunks[piece_inx] = 0  # assigning zero to the index whose piece we reseived succesfully
+        self.torr.piece_request[piece_inx] = 0 # we done with this piece
+        for peer in self.torr.piece_request[piece_inx]:
+            if peer.target_piece_inx == piece_inx:
+                peer.target_piece_inx = None
+        self.display_download()
+        self.peer.download()
+        if self.check_download_complete():
+            self.write_data()
+        else:
+            return
+
+    def display_download(self):
+        pieces_sum = 0
+        for piece in self.complete:
+            if piece:
+                pieces_sum+=1
+        pieces_len = len(self.complete)
+        upto_complete = 100.0* pieces_sum /pieces_len
+        print('%02.1f%% complete',upto_complete)
+
+    def check_download_complete(self):
+        for piece in self.complete:
+            if piece:
+                continue
+            else:
+                return 0
+        return 1
+
+    def write_data(self):
+        self.torr.complete = 1
+        # now closing all peer connection
+        self.close_peer_conn()
+        WD = Write_data(self.torr,self.complete)
+        if self.torr['format'] == 'single file':
+            WD.for_single_file()
+        else:
+            WD.for_multiple_file()
+
+        self.torr.con_menu.end_loop() # stop our loop of checking the recv data
+
+
+    def close_peer_conn(self):
+        for peer in self.torr.peer_list:
+            if peer.con:
+                peer.con.Close_connection()
+        return
 
 
 
