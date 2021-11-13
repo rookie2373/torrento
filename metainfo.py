@@ -47,6 +47,12 @@ def getTorrentMetaInfo(bencodeData):
         announce = metaData.get(b'announce')
         metaInfo['announce'] = announce
 
+        # If announceList present --> extract announce list
+        if not announce:
+            announceList = metaData.get(b'announce-list')
+            metaInfo['announce_list'] = announceList
+            metaInfo['announce'] = announceList[3]
+
         if(debug):
             print(metaInfo['announce'])
 
