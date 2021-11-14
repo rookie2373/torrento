@@ -11,12 +11,15 @@ class Client_Torrent():
         self.con_menu = con_menu
         self.present_peer =[]
         self.peer_list =[] # peer object list
-        self.trackers = None
+        self.conn_failed_history = []
         self.complete = False
         self.torr_down = None
         # list to store Objects of torr_download
         self.torr_down_list = []
         self.piece_request = [[] for i in self.meta_struct['info']['pieces']] # creating the empty list for each piece into the one list
+        self.Completed_pieces = [0 for i in meta_struct['info']['pieces']] # to store the downloaded  whole piece
+        self.chunks = [[] for i in self.meta_struct['info']['pieces']] # to storing the downloaded blocks 
+
 
 
     def torrent_conn(self):
@@ -59,8 +62,34 @@ class Client_Torrent():
         if self.complete:
             return
         for i in self.peer_list:
-            if i.connect_failed:
+            if not i.connect_failed:
                 continue
-            print('current peer is failed : starting new peer :',i)
-            i.make_conn()
-            break
+
+            if i in self.conn_failed_history:
+                # atmost one try to connect to that peer
+                continue
+            self.conn_failed_history.append(i)
+
+            while not i.con:
+                try:
+                    i.make_conn()
+                    i.con = 1
+                    print('current peer is failed : starting new peer :', i)
+                except:
+                    time.sleep(2)
+
+            if i.con:
+                break
+        return
+    
+    def check_torr_down_obj(self, peer):
+        for i in range(len(self.peer_list)):
+            if self.peer_list[i] == peer:
+                self.torr_down = self.torr_down_list[i]
+
+    
+     def  store_piece(self,piece_inx,data):
+        # storing the piece into the complete list
+        self.Completed_pieces[piece_inx] = data
+        # the piece which is complete
+        self.chunks[piece_inx] = 0
