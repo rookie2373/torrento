@@ -14,13 +14,19 @@ Members
 
 - **2.metainfo.py :** which is used to decode the bencoded .torrent file
 
-- **3.tracker.py :** This file basically used for sending the http request and getting the list of peers 
+- **3.tracker.py :** This file basically used for sending the http and udp request and getting the list of peers 
 
 - **4.Config :** peer configurations
 
-- **5.peer.py:** making handshake and requesting the peers
+- **5.peer.py:** making handshake and requesting the peers for piece maintaining the all data  
 
-- **6.Connection :**  making connections with multiple peers at same timee (for multiple connection using threading)
+- **6.Connection.py :**  making connections with multiple peers at same timee (for multiple connection using threading)
+
+- **7.torrent.py :**  maintaining peers objects also use for rarest first statergy
+
+- **8.torr_download.py :**  for handling the requested piece and chunks.
+
+- **9.Write_data.py :**  after completing the whole data, to write that data into the files  
 
 
 
