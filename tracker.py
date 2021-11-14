@@ -10,7 +10,7 @@ import socket
 from config import CONFIG
 
 # For debugging
-debug = True
+debug = False
 
 # Connecting to tracker
 
@@ -41,6 +41,7 @@ def clientRequest(torrent, metainfo, announce):
             url += char
 
     if(debug):
+        print(__name__ + ".py")
         print("Port: ", port)
         print("Announce url:", url)
         print("Protocol: ",protocol)
@@ -71,6 +72,7 @@ def clientRequest(torrent, metainfo, announce):
         action, transaction_Id, connection_id = struct.unpack(">LLQ",resp1)
 
         if(debug):
+            print(__name__ + ".py")
             print("action: ",action)
             print("transaction id: ",transaction_Id)
             print("connection_id: ",connection_id)
@@ -108,6 +110,7 @@ def clientRequest(torrent, metainfo, announce):
         action, transaction_id, intervel, leechers, seeders = struct.unpack("!LLLLL", resp2[:20])
 
         if(debug):
+            print(__name__ + ".py")
             print("action: ",action)
             print("transaction_id: ",transaction_id)
             print("interval: ",intervel)
@@ -172,6 +175,7 @@ def decodeResponse(trackResp):
     respDict['interval'] = int(trackResp[b'interval'])
 
     if(debug):
+        print(__name__ + ".py")
         print(respDict['interval'])
         print()
 
@@ -182,6 +186,7 @@ def decodeResponse(trackResp):
         respDict['complete'] = None
     
     if(debug):
+        print(__name__ + ".py")
         print(respDict['complete'])
         print()
 
@@ -192,6 +197,7 @@ def decodeResponse(trackResp):
         respDict['complete'] = None
     
     if(debug):
+        print(__name__ + ".py")
         print(respDict['incomplete'])
         print()
 
@@ -202,6 +208,7 @@ def decodeResponse(trackResp):
         respDict['tracker_id'] = None
     
     if(debug):
+        print(__name__ + ".py")
         print(respDict['tracker_id'])
         print()
 
@@ -209,6 +216,7 @@ def decodeResponse(trackResp):
     peers = trackResp[b'peers']
 
     if(debug):
+        print(__name__ + ".py")
         print("Peers are:",peers)
 
     # Appending the peer list
@@ -252,6 +260,7 @@ def decode_for_binary_model(bytes_peers):
     byte_size = struct.calcsize(no_of_bytes)
 
     if(debug):
+        print(__name__ + ".py")
         print(byte_size)
         print()
 
@@ -273,6 +282,7 @@ def decode_for_binary_model(bytes_peers):
         list_peers.append(peer_dict)
 
     if(debug):
+        print(__name__ + ".py")
         print(list_peers)
         print()
     return list_peers
@@ -300,6 +310,7 @@ def udpTrackerResp(torrent,resp):
         i += 6
 
     if(debug):
+        print(__name__ + ".py")
         print(peer_list)
         print()
 
@@ -315,6 +326,7 @@ def httpTrackerResp(torrent, http_resp):
     trackResp = bencodepy.decode(http_resp.text.encode('latin-1'))
 
     if(debug):
+        print(__name__ + ".py")
         print(trackResp)
         print()
 
