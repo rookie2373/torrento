@@ -23,21 +23,4 @@ if __name__ == '__main__':
     
     # Connecting to peers using torrent.py
     torr.torrent_conn()
-    torr.con_menu.start_loop()
-
-
-#from metainfo import getTorrentMetaInfo,getRawFile
-# from tracker import client_request
-# from connection import con_menu
-# from torrent import Client_Torrent
-
-
-
-# if __name__ == '__main__':
-#     filename = torrentfiles[9]
-#     contents = getRawFile(filename)
-#     metainfo = getTorrentMetaInfo(contents)
-#     torr = Client_Torrent(metainfo,con_menu)
-#     client_request(torr,metainfo,metainfo['announce'])
-#     torr.torrent_conn()
-#     con_menu.start_loop()
+    con_menu.start_loop()

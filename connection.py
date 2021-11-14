@@ -8,9 +8,11 @@ import struct
 import time
 
 # Class which creates multiple connections and keeps them active via threads
+
+
 class conn_using_thread():
     def __init__(self):
-        # List of active connections 
+        # List of active connections
         self.connection = []
         self.running_con = 0
 
@@ -27,15 +29,18 @@ class conn_using_thread():
                 if not each_con.thread.is_alive():
                     # print("recv from peer", each_con)
                     continue
-                time.sleep(3.0)
+                # time.sleep(4.0)
                 # if the connection of current thread is alive we call the func check on it
                 each_con.check()
 
     # Close every active connection
     def end_loop(self):
         self.running_con = 0
+        print("Closing all threads ")
         for each_con in self.connection:
-            each_con.Close_connection()
+            each_con.stop_thread()
+            if each_con.thread.is_alive():
+                each_con.thread.join()
 
 
 # The main class for creating connection
@@ -48,7 +53,7 @@ class main_connection():
 
         self.send = thread_con.send_data
         self.recv = thread_con.recv_data
-        
+
         # Connection statuses
         self.connet_lost = 0
         self.timeout = 0
@@ -60,8 +65,10 @@ class main_connection():
             # connect using TCP
             self.Tcp_connect()
         # else --> close the connection
-        except connectionfailedError:
-            print("connection failed")
+        except ConnectionError:
+            if(debug):
+                print("connection failed")
+
             self.connection_failed = 1
             self.S.close()
             self.S = None
@@ -74,11 +81,11 @@ class main_connection():
             self.recv_msg()
 
         # connection is lost --> close that connetion
-        self.S.close() 
+        self.S.close()
         self.S = None
 
-
     # Function to connect using TCP
+
     def Tcp_connect(self):
         # Creating a TCP socket
         self.S = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -88,9 +95,8 @@ class main_connection():
         try:
             self.S.connect((self.peer.ip, self.peer.port))
         except OSError:
-            #self.S.close()
-            raise connectionfailedError
-            #self.Conn_failed_handle()
+            print("connection failed")
+            # self.Conn_failed_handle()
 
         # connection is done
         self.con_done = 1
@@ -104,7 +110,7 @@ class main_connection():
     # Function to add data to buffer
     def add_data(self, data):
         self.send.append(data)
-    
+
     # Funcion to send message via TCP
     def send_msg(self):
         while True:
@@ -120,12 +126,16 @@ class main_connection():
                         print("Connection lost")
                     if self.connet_lost:
                         return
-            except :
-                    # send list is empty so return
-                    return
+            except:
+                # send list is empty so return
+                return
 
     # Function to receive message via TCP
     def recv_msg(self):
+        if not self.S:
+            self.connet_lost = 1
+            return
+
         try:
             data = self.S.recv(4096)
         except ConnectionError:
@@ -135,6 +145,7 @@ class main_connection():
         except socket.timeout:
             # print("timeout")
             return
+
         else:
             # print(print(".->",len(data)))
             if data:
@@ -143,8 +154,7 @@ class main_connection():
                 return
             return
 
-
-    # Function to
+    # Function to check connections
     def connection_check(self):
         if self.connection_failed:
             self.connection_failed = 0
@@ -157,18 +167,23 @@ class main_connection():
     def Conn_failed_handle(self):
         self.peer.handle_failed_con()
 
+    
+    def Close_connection(self):
+        self.connet_lost = 1
+
 
 # The class which fires the threads which make the connection
 class threading_connection():
-    def __init__(self,peer):
+    def __init__(self, peer):
         self.peer = peer
         # for checking data is continously
         self.recv_data = []
-        self.send_data = []        
-        
+        self.send_data = []
+
         # connection status
         self.connection_failed = 0
         self.connection_lost = 0
+        self.thread_stop = False
 
         # connector object
         self.main_conn = main_connection(self)
@@ -186,16 +201,16 @@ class threading_connection():
                 data = self.recv_data.pop()
                 if data:
                     self.peer.Peer_resp(data)
+        if not self.thread_stop:
+            self.main_conn.connection_check()
 
-        self.main_conn.connection_check()
+    # Stop the TCP connection Thread
+    def stop_thread(self):
+        self.thread_stop = True
+        self.main_conn.Close_connection()
 
-    # Close the TCP connection
-    def Close_connection(self):
-        self.S.close()
-        self.S = None
 
-# Class for exception connectionfailedError
-class connectionfailedError(Exception):
-    pass
+
+
 
 con_menu = conn_using_thread()

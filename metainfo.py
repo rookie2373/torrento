@@ -5,7 +5,7 @@ import os
 import copy
 import hashlib
 import bencodepy
-import voluptuous as vol
+import random
 
 # The final metainfo passed to tracker request
 metaInfo = {}
@@ -178,14 +178,3 @@ def processFileInfo(info):
             print(str(infoDict['length']/megabyteFactor) + " MB")
 
     return infoDict
-
-
-# it will represent the meta dict in structured format
-# def repr_in_metaInfo():
-#     # coping the orignal info_dict
-#     temp_dict = copy.deepcopy(metaInfo)
-#     if len(temp_dict['info']['pieces']) > 3:
-#         temp_dict['info']['pieces'] = temp_dict['info']['pieces'][:3] + ['...']
-#     if temp_dict['info']['files'] and len(temp_dict['info']['files']) > 3:
-#         temp_dict['info']['files'] = temp_dict['info']['files'][:3] + ['...']
-#     return temp_dict

@@ -11,13 +11,15 @@ from config import CONFIG
 debug = True
 
 # The peer class
+
+
 class Peers():
     def __init__(self, torr, ip, port, peer_id=None):
         self.ip = ip
+        # if peer id is passed as a parameter then it gets assigned otherwise its default value is None
         self.peer_id = peer_id
         self.port = port
         self.torr = torr
-
 
         # maintaining the information of each connection of remote peer
         # intial assignment.
@@ -34,15 +36,17 @@ class Peers():
         self.pieces = len(torr.meta_struct['info']['pieces'])
 
         self.set_peer_piece_list()
-        self.request_piece = 0
-        
+        # self.request_piece = 0
+        self.target_piece_inx = None
+
         # concanate the data if it comes in pieces
         self.buffer = b''
-        
-        # making list of all msg_types according the there msg id as index
+        self.starting_point = 0
+
+        # making list of all msg_types according the their msg id as index
         self.msg_types = ['choke', 'unchoke', 'interested', 'not_interested', 'have', 'bitfield', 'request', 'piece',
-                         'cancel', 'port']
-                         
+                          'cancel', 'port']
+
     # Initializing peer_piece_list
     def set_peer_piece_list(self):
         for i in range(self.pieces):
@@ -55,7 +59,8 @@ class Peers():
     # Making a TCP handshake
     def handshake(self):
         print("Sending handshake")
-        resp = self.make_handshake(self.torr.meta_struct['info_hash'], CONFIG['peer_id'])
+        resp = self.make_handshake(
+            self.torr.meta_struct['info_hash'], CONFIG['peer_id'])
         self.send_msg(resp)
 
     # Function to construct handshake data
@@ -63,7 +68,8 @@ class Peers():
         # Protocol identifier string
         pstr = b'BitTorrent protocol'
         # <pstrlen><pstr><reserved><info_hash><peer_id>
-        format = '!B%ds8x20s20s' % len(pstr)  # %d -> len(pstr) # !-> big endian
+        # %d -> len(pstr) # !-> big endian
+        format = '!B%ds8x20s20s' % len(pstr)
         data = struct.pack(format, len(pstr), pstr, info_hash, peer_id)
         return data
 
@@ -76,7 +82,7 @@ class Peers():
     def handle_failed_con(self):
         self.connect_failed = 1
         self.con = None
-        self.torr.peer_stopped_recovery(self)
+        self.torr.peer_stopped_recovery()
 
     # Function after connection is made
     def con_made_handle(self, con):
@@ -91,18 +97,18 @@ class Peers():
         self.send_msg(msg)
 
     # Function to construct message
-    def make_msg(self, **arguments): # here arg is dictionary
-        if len(arguments) == 1 :
+    def make_msg(self, **arguments):  # here arg is dictionary
+        if len(arguments) == 1:
             msg_type = arguments['msg_type']
         else:
             msg_type = arguments['msg_type']
             piece_inx = arguments['piece_inx']
             block_length = arguments['block_length']
-            starting_point = arguments['starting_point'] 
+            starting_point = arguments['starting_point']
 
         # all remaining msg is of the type <length prefix><message ID><payload>
         msg_No = None  # massage ID is single byte decimal
-        
+
         payload = b''  # payload is message dependent
         if msg_type == 'choke':
             msg_No = 0  # fixed length no payload
@@ -118,12 +124,17 @@ class Peers():
             msg_No = 5  # fixed length
         elif msg_type == 'request':
             msg_No = 6
-            payload = struct.pack('!LLL',piece_inx,starting_point,block_length)
+
+            print("Send request", piece_inx, starting_point, block_length)
+
+            payload = struct.pack(
+                '!LLL', piece_inx, starting_point, block_length)
 
         # length prefix is four byte big-endian value
         # but observe that it is  0001 when payload is empty but changes when payload length is not empty
         length_prefix = len(payload) + 1
-        format = '!lB%ds' % len(payload)  # B->unsigned char , l -> long , s-> char
+        # B->unsigned char , l -> long , s-> char
+        format = '!lB%ds' % len(payload)
         msg = struct.pack(format, length_prefix, msg_No, payload)
 
         return msg
@@ -131,11 +142,12 @@ class Peers():
     # Function to parse handshake response
     def parse_hand_resp(self, data):
         # check it is in correct format  or not
-        pstrlen = int(data[0]) # 19
-        remaining_data = data[1:49 + pstrlen] # 1->68 byte of data
-        
-        extra_data = 1 + len(remaining_data) # this length of extra data which is comes with handshake
-        
+        pstrlen = int(data[0])  # 19
+        remaining_data = data[1:49 + pstrlen]  # 1->68 byte of data
+
+        # this length of extra data which is comes with handshake
+        extra_data = 1 + len(remaining_data)
+
         format = '!%ds8x20s20s' % pstrlen
         res = struct.unpack(format, remaining_data)
 
@@ -144,7 +156,6 @@ class Peers():
         dec_dict['pstr'] = res[0].decode('utf')
         dec_dict['info_hash'] = res[1]
         dec_dict['peed_id'] = res[2]
-
 
         # handshake resp is correct so connection with peer is established
         if dec_dict['pstr'] == 'BitTorrent protocol':
@@ -163,14 +174,15 @@ class Peers():
         # invalid response
         if len(msg) < 4:
             return 0
-        
+
         # taking first four byte from first tuple
         length_prefix = struct.unpack('!L', msg[:4])[0]
         msg_dict['length_prefix'] = length_prefix
-        total_bytes += 4 # four byte length prefix
+        total_bytes += 4  # four byte length prefix
 
         if length_prefix == 0:
             # keep alive message
+            #print("Peer msg -> keep_alive")
             return total_bytes
 
         # if the data that comes is not complete then we just return and add that data into the buffer
@@ -185,13 +197,13 @@ class Peers():
 
         msg_dict['msg_no'] = msg_no
         msg_dict['payload'] = payload
-        
-        msg_type = self.msg_types[msg_no]
-        
-        print("Peer's message :", msg_no, msg_type, payload)
 
-        # setting peer status 
-        self.set_peer_status(msg_dict,msg_type)
+        msg_type = self.msg_types[msg_no]
+
+        print("Peer's message :", msg_no, msg_type)
+
+        # setting peer status
+        self.set_peer_status(msg_dict, msg_type)
         return total_bytes
 
     # Parsing and storing message data in a buffer
@@ -203,17 +215,20 @@ class Peers():
 
         while data:
             if not self.connect_start:
-                  res = self.parse_hand_resp(data)
+                res = self.parse_hand_resp(data)
             else:
-                 # peers is already done handshake
-                 res = self.parse_msg_resp(data)
+                # peers is already done handshake
+                res = self.parse_msg_resp(data)
             if res == 0:
                 break
             # if resp from peer is correct then this data become zero and that means buffer becomes zero
             data = data[res:]
         self.buffer = data
 
-    # Function to 
+    #
+    def set_taget_piece_inx(self):
+        self.target_piece_inx = None
+
     def downloading(self):
         # check if is handshake is done or not
         if not self.connect_start:
@@ -221,38 +236,46 @@ class Peers():
         elif self.peer_choking:
             print("send interested")
             # try to send the msg to peer that we are interested
-            self.pass_msg(msg_type = 'interested')
-
-
-        elif self.request_piece == 1 :
-            # wait for piece to download
-            pass
+            self.pass_msg(msg_type='interested')
 
         else:
             # request new piece as peer unchock the client that is we
-            piece_inx = self.new_piece()
-            self.request_piece = piece_inx
-            # here we appending object of peers so that each peer can request new index
+            piece_inx = self.new_piece_inx()
+
+            if piece_inx == None:
+                return
+
+            self.target_piece_inx = piece_inx
+
             self.torr.piece_request[piece_inx].append(self)
             # as piece length is so large that we cannot request whole piece at once
             # hence we requesting the piece in chunks we called as block
-            self.request_Block(piece_inx,None)
+            self.request_Block(piece_inx, None)
 
     # Request a block from peer
-    def request_Block(self,p_indx,start_pt):
+    def request_Block(self, p_indx, start_pt):
         # len_piece = self.torr.meta_struct['info']['piece_length']
         if start_pt == None:
-            starting_point=0
+            starting_point = 0
         else:
             starting_point = start_pt + CONFIG['block_length']
-        self.pass_msg( msg_type = 'request',piece_inx = p_indx,starting_point=starting_point, block_length = CONFIG['block_length'])
+        self.pass_msg(msg_type='request', piece_inx=p_indx,
+                      starting_point=starting_point, block_length=CONFIG['block_length'])
 
     # returns an appropriate piece to be requested
-    def new_piece(self):
-               for piece_inx in range(self.pieces):
-            # here we are checking that if current peer has the piece or not and also if that piece is already requested by another peer then we go for next piece
+    def new_piece_inx(self):
+        for piece_inx in range(self.pieces):
+            # here we are checking that is current peer has the piece or not and also if that piece is already requested by another peer then we go for next piece
                 if (self.peer_piece_list[piece_inx] and not self.torr.piece_request[piece_inx]):
-                    return piece_inx
+                        # also checking the piece is complete or not
+                        return piece_inx
+
+        # now request a piece which is not complete and which is available to this peer
+        for piece_i in range(self.pieces):
+            if not self.torr.torr_down.complete[piece_i] and self.peer_piece_list[piece_inx]:
+                return piece_i
+        print("None",self.peer_piece_list)
+        return
 
     # Setting peer status
     def set_peer_status(self, msg_dict, msg_type):
@@ -267,30 +290,38 @@ class Peers():
         elif msg_type == 'not_interested':
             self.peer_interested = 0
         elif msg_type == 'have':
-            (indx,) = struct.unpack('!L', msg_dict['payload'])  # taking the index of the pieces the peers have
-            self.peer_piece_list[indx] = 1  # setting the index of pieces that peer have
+            # taking the index of the pieces the peers have
+            (indx,) = struct.unpack('!L', msg_dict['payload'])
+            # setting the index of pieces that peer have
+            self.peer_piece_list[indx] = 1
 
         elif msg_type == 'bitfield':
             payload = msg_dict[
                 'payload']  # The payload is a bitfield representing the pieces that peer has that pieces
 
-            res = bin(int.from_bytes(payload, byteorder=sys.byteorder))  # converting bytes to binary
-            print("res,peer_list", len(res), len(self.peer_piece_list),res)
-            #self.peer_piece_list = [int(res[i]) for i in
-                                    #range(2, len(res))]  # here 1 is  indicates the pieces the peer has
+            # converting bytes to binary
+            res = bin(int.from_bytes(payload, byteorder=sys.byteorder))
+            print("res,peer_list", len(res), len(self.peer_piece_list), res)
+            # self.peer_piece_list = [int(res[i]) for i in
+            # range(2, len(res))]  # here 1 is  indicates the pieces the peer has
 
-            if len(res)<self.pieces:
-                for x in range(2,len(res)):
-                    self.peer_piece_list[x] =1
+            if len(res) < self.pieces:
+                for x in range(2, len(res)):
+                    self.peer_piece_list[x] = 1
             else:
                 self.peer_piece_list = [int(res[i]) for i in
-                                    range(2, self.pieces + 2)]  # here 1 is  indicates the pieces the peer has
+                                        range(2, self.pieces + 2)]  # here 1 is  indicates the pieces the peer has
 
         elif msg_type == 'piece':
-            starting_tuple = struct.unpack('!LL', msg_dict['payload'][:8]) # taking first two byte
-            piece_inx = starting_tuple[0]
-            block_start = starting_tuple[1]
+            full_payload = msg_dict['payload']
+            (piece_inx,block_start) = struct.unpack('!LL',full_payload[:8]) # taking first two byte
             payload = msg_dict['payload'][8:]
+            print("st_tuple->",piece_inx,block_start)
+            self.torr.check_torr_down_obj(self)
             self.torr.torr_down.check_block(piece_inx, block_start, payload)
-        elif msg_type =='port':
-            return
+        
+        elif msg_type == 'cancel':
+            print('cancel')
+        elif msg_type == 'port':
+            print("port")
+        
