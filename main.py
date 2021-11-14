@@ -6,7 +6,6 @@ from metainfo import getTorrentMetaInfo,getRawFile
 from tracker import clientRequest
 from connection import con_menu
 from torrent import Client_Torrent
-from datafiles import torrentfiles
 
 # The Driver Code
 if __name__ == '__main__':
