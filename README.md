@@ -35,7 +35,7 @@ Members
 
 pip install -r requirements.txt
 
-** To Run:**
+**To Run:**
 
 python main.py FilePath
 
