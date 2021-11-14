@@ -188,7 +188,7 @@ class Peers():
         
         msg_type = self.msg_types[msg_no]
         
-        print("Peer's message :", msg_no, msg_type, payload)
+        print("Peer's Reply :", msg_no, msg_type, payload)
 
         # setting peer status 
         self.set_peer_status(msg_dict,msg_type)
@@ -240,12 +240,32 @@ class Peers():
 
     # Request a block from peer
     def request_Block(self,p_indx,start_pt):
-        # len_piece = self.torr.meta_struct['info']['piece_length']
-        if start_pt == None:
-            starting_point=0
+        if start_pt==None:
+            starting_point = 0
         else:
-            starting_point = start_pt + CONFIG['block_length']
-        self.pass_msg( msg_type = 'request',piece_inx = p_indx,starting_point=starting_point, block_length = CONFIG['block_length'])
+          starting_point = start_pt + CONFIG['block_length']
+
+        last_inx = self.pieces_length - 1
+
+        if p_indx == last_inx:
+            len_piece = self.torr.meta_struct['info']['piece_length']
+            total_length = self.torr.meta_struct['info']['length']
+            len_block =(total_length - (last_inx * len_piece))  # calculating the blocklenght for last piece
+            new_block_len = len_block-starting_point
+
+            # if calculated block length is length is less than required block length then we asign that length to block_length
+            if new_block_len<CONFIG['block_length']:
+                block_len = new_block_len
+
+            else:
+                block_len = CONFIG['block_length']
+        else:
+             block_len = CONFIG['block_length']
+
+
+        self.pass_msg( msg_type = 'request',piece_inx = p_indx,starting_point=starting_point, block_length = block_len)
+
+
 
     # returns an appropriate piece to be requested
     def new_piece(self):
@@ -276,21 +296,28 @@ class Peers():
 
             res = bin(int.from_bytes(payload, byteorder=sys.byteorder))  # converting bytes to binary
             print("res,peer_list", len(res), len(self.peer_piece_list),res)
-            #self.peer_piece_list = [int(res[i]) for i in
-                                    #range(2, len(res))]  # here 1 is  indicates the pieces the peer has
+            
 
-            if len(res)<self.pieces:
+            if len(res)<self.pieces_length:
                 for x in range(2,len(res)):
-                    self.peer_piece_list[x] =1
+                    self.peer_piece_list[x-2] = res[x]
             else:
-                self.peer_piece_list = [int(res[i]) for i in
-                                    range(2, self.pieces + 2)]  # here 1 is  indicates the pieces the peer has
+
+                for i in range(2,self.pieces_length + 2):
+                    # here 1 is  indicates the pieces the peer has
+                    if i < len(self.peer_piece_list)+2 and i < len(res):
+                        self.peer_piece_list[i-2] = int(res[i])
+            
 
         elif msg_type == 'piece':
             starting_tuple = struct.unpack('!LL', msg_dict['payload'][:8]) # taking first two byte
             piece_inx = starting_tuple[0]
             block_start = starting_tuple[1]
             payload = msg_dict['payload'][8:]
+             self.torr.check_torr_down_obj(self)
             self.torr.torr_down.check_block(piece_inx, block_start, payload)
-        elif msg_type =='port':
-            return
+
+        elif msg_type == 'cancel':
+            print('cancel')
+        elif msg_type == 'port':
+            print("port")
