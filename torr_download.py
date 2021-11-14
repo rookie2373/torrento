@@ -24,7 +24,7 @@ class torr_Download():
 
         self.chunks[piece_inx].append(
             (chunk_start, payload))  # storing the tuple of starting point pf paylosd with payload at that indx
-        last_inx = self.peer.pieces_length - 1
+        last_inx = self.peer.pieces - 1
 
         if piece_inx == last_inx:
             # piece index is last then we need to update the required length

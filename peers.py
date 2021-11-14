@@ -260,7 +260,7 @@ class Peers():
         else:
           starting_point = start_pt + CONFIG['block_length']
 
-        last_inx = self.pieces_length - 1
+        last_inx = self.pieces - 1
 
         if p_indx == last_inx:
             len_piece = self.torr.meta_struct['info']['piece_length']
@@ -323,12 +323,12 @@ class Peers():
             # self.peer_piece_list = [int(res[i]) for i in
             # range(2, len(res))]  # here 1 is  indicates the pieces the peer has
 
-            if len(res)<self.pieces_length:
+            if len(res)<self.pieces:
                 for x in range(2,len(res)):
                     self.peer_piece_list[x-2] = res[x]
             else:
 
-                for i in range(2,self.pieces_length + 2):
+                for i in range(2,self.pieces + 2):
                     # here 1 is  indicates the pieces the peer has
                     if i < len(self.peer_piece_list)+2 and i < len(res):
                         self.peer_piece_list[i-2] = int(res[i])
