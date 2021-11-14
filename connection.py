@@ -29,7 +29,7 @@ class conn_using_thread():
                 if not each_con.thread.is_alive():
                     # print("recv from peer", each_con)
                     continue
-                # time.sleep(4.0)
+                # time.sleep(2.0)
                 # if the connection of current thread is alive we call the func check on it
                 each_con.check()
 
@@ -158,10 +158,10 @@ class main_connection():
     def connection_check(self):
         if self.connection_failed:
             self.connection_failed = 0
-            # self.Conn_failed_handle()
+            self.Conn_failed_handle()
         if self.connet_lost:
             self.connet_lost = 0
-            # self.Conn_failed_handle()
+            self.Conn_failed_handle()
 
     # Function to
     def Conn_failed_handle(self):

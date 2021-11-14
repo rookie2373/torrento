@@ -90,7 +90,7 @@ class torr_Download():
 
     def display_download(self):
         pieces_sum = 0
-        print("downloaded",len(self.complete))
+        
         for piece in self.complete:
             if piece:
                 pieces_sum += 1

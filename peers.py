@@ -87,7 +87,7 @@ class Peers():
     # Function after connection is made
     def con_made_handle(self, con):
         self.con = con
-        print("Connection made :", self.con)
+        print("Connection made ")
         self.downloading()
 
     # Function to communicate after handshake is made
@@ -240,12 +240,17 @@ class Peers():
 
         else:
             # request new piece as peer unchock the client that is we
+
+            if not self.torr.rare_inx:
+                self.torr.rarest_1st()
+                # print(self.torr.rare_inx,self.peer_piece_list)
             piece_inx = self.new_piece_inx()
 
             if piece_inx == None:
                 return
 
             self.target_piece_inx = piece_inx
+            print(piece_inx)
 
             self.torr.piece_request[piece_inx].append(self)
             # as piece length is so large that we cannot request whole piece at once
@@ -277,22 +282,47 @@ class Peers():
         else:
              block_len = CONFIG['block_length']
 
-
         self.pass_msg( msg_type = 'request',piece_inx = p_indx,starting_point=starting_point, block_length = block_len)
+    def find_rar_inx(self):
+        min_val = 99999
+        rar_inx = 0
+        rar_arr_inx = None
+        for i in (self.torr.rare_inx):
+            if i:
+                if i[1] < min_val and i[1] != 0:
+                    min_val = i[1]
+                    rar_inx = i[0]
+                    rar_arr_inx = i
+
+        return (rar_inx, rar_arr_inx)
 
     # returns an appropriate piece to be requested
     def new_piece_inx(self):
-        for piece_inx in range(self.pieces):
-            # here we are checking that is current peer has the piece or not and also if that piece is already requested by another peer then we go for next piece
-                if (self.peer_piece_list[piece_inx] and not self.torr.piece_request[piece_inx]):
-                        # also checking the piece is complete or not
-                        return piece_inx
+         # print(piece_inx,rar_arr_tuple)
+        # here we are checking that is current peer has the piece or not and also if that piece is already requested by another peer then we go for next piece
+        for loop in range(self.pieces):
+            piece_inx, rar_arr_tuple = self.find_rar_inx()
+            # piece_inx, rar_arr_tuple = self.find_rar_inx()
+            if (self.peer_piece_list[piece_inx] and not self.torr.piece_request[piece_inx]):
+                # also checking the piece is complete or not
+
+                if rar_arr_tuple in self.torr.rare_inx or self.torr.rare_inx:
+                    # even if all all tuples are removed from the rare_inx list we need not remove it bcus we already complete rare first statergy
+                    self.torr.set_rar_inx(rar_arr_tuple)
+                # print("req_inx",piece_inx)
+                return piece_inx
+
+            elif self.torr.piece_request[piece_inx]:
+                self.torr.set_rar_inx(rar_arr_tuple)
+            elif not self.peer_piece_list[piece_inx]:
+                self.torr.set_rar_inx(rar_arr_tuple)
 
         # now request a piece which is not complete and which is available to this peer
         for piece_i in range(self.pieces):
-            if not self.torr.torr_down.complete[piece_i] and self.peer_piece_list[piece_inx]:
+            if not self.torr.torr_down.complete[piece_i] and self.peer_piece_list[piece_inx] and not \
+            self.torr.piece_request[piece_i]:
                 return piece_i
-        print("None",self.peer_piece_list)
+        print("None", self.peer_piece_list, piece_inx)
         return
 
     # Setting peer status
@@ -300,6 +330,7 @@ class Peers():
         # checking msg resp
         if msg_type == 'choke':
             self.peer_choking = 1
+            self.downloading()
         elif msg_type == 'unchoke':
             self.peer_choking = 0
             self.downloading()  # as peer unchock we go to the downloading
@@ -319,7 +350,7 @@ class Peers():
 
             # converting bytes to binary
             res = bin(int.from_bytes(payload, byteorder=sys.byteorder))
-            print("res,peer_list", len(res), len(self.peer_piece_list), res)
+            # print("res,peer_list", len(res), len(self.peer_piece_list), res)
             # self.peer_piece_list = [int(res[i]) for i in
             # range(2, len(res))]  # here 1 is  indicates the pieces the peer has
 
