@@ -357,7 +357,7 @@ class Peers():
         for piece_i in range(self.pieces):
             if not self.torr.torr_down.complete[piece_i] and self.peer_piece_list[piece_inx]:
                 return piece_i
-        print("None", self.peer_piece_list, piece_inx)
+        #print("None", self.peer_piece_list, piece_inx)
         return
 
     # Setting peer status according to responses
