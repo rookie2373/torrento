@@ -1,2 +1,2 @@
-requests==2.9.1
 bencodepy==0.9.5
+requests==2.22.0
