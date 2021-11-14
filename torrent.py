@@ -88,7 +88,7 @@ class Client_Torrent():
                 self.torr_down = self.torr_down_list[i]
 
     
-     def  store_piece(self,piece_inx,data):
+    def store_piece(self,piece_inx,data):
         # storing the piece into the complete list
         self.Completed_pieces[piece_inx] = data
         # the piece which is complete
