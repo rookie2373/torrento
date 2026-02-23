@@ -1,49 +1,51 @@
-# Writing file Locally
-
 import os
+from config import DEBUG
 
-class Write_data():
-    def __init__(self,torr,piece_list):
-        self.torr = torr
+class WriteData():
+    def __init__(self, torrent, piece_list):
+        if DEBUG:
+            print(f"[Write_data.py] WriteData initialized for torrent")
+        self.torrent = torrent
         self.piece_list = piece_list
         self.data = []
         self.piece_list_to_data()
         self.data = bytes(self.data)
 
-
     def piece_list_to_data(self):
-        for x in self.piece_list:
-            for y in x:
-                self.data.append(y)
-
-
+        for piece_entry in self.piece_list:
+            for byte_value in piece_entry:
+                self.data.append(byte_value)
 
     def for_single_file(self):
-        # spliting the path into head and tail
-        head_tail = os.path.split(self.torr.meta_struct['info']['name'])
-        filename = head_tail[1] # here tail is our filename
-        curr_dir = os.getcwd()
-        file_path = os.path.join(curr_dir,filename)
-        with open(file_path,'wb') as file:
-            file.write(self.data)
-        print("File downloaded at location %s" %file_path)
-
+        if DEBUG:
+            print("[Write_data.py] Writing single file")
+        head, tail = os.path.split(self.torrent.torrent_metadata['info']['name'])
+        filename = tail
+        current_dir = os.getcwd()
+        file_path = os.path.join(current_dir, filename)
+        with open(file_path, 'wb') as file_handle:
+            file_handle.write(self.data)
+        print(f"[Write_data.py] File downloaded at location {file_path}")
 
     def for_multiple_file(self):
-        curr_dir = os.getcwd()
-        head_tail = os.path.split(self.torr.meta_struct['info']['name'])
-        filename = head_tail[1]
-        start =0
-        for files in self.torr.meta_struct['info']['files']:
-            file_path = os.path.join(curr_dir,files['path'])
+        if DEBUG:
+            print("[Write_data.py] Writing multiple files")
+        current_dir = os.getcwd()
+        head, tail = os.path.split(self.torrent.torrent_metadata['info']['name'])
+        filename = tail
+        start_position = 0
+        for file_data in self.torrent.torrent_metadata['info']['files']:
+            file_path = os.path.join(current_dir, file_data['path'])
             if not os.path.exists(file_path):
                 os.makedirs(file_path)
-            data = self.data[start:start+files['length']] # spliting the file data according to length
-            file = open(file_path,'wb')
-            file.write(data)
-            start += files['length']
+            data = self.data[start_position:start_position + file_data['length']]
+            file_handle = open(file_path, 'wb')
+            file_handle.write(data)
+            start_position += file_data['length']
+            if DEBUG:
+                print(f"[Write_data.py] Wrote {file_path}")
 
-        print("files saved")
+        print("[Write_data.py] Files saved")
 
 
 

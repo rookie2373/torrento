@@ -1,26 +1,32 @@
-# Driver code for Bittorrent client.
-
-# Import Modules
 import sys
-from metainfo import getTorrentMetaInfo,getRawFile
-from tracker import clientRequest
-from connection import con_menu
-from torrent import Client_Torrent
+from config import DEBUG
+from metainfo import get_torrent_meta_info, get_raw_file
+from tracker import client_request
+from connection import connection_manager
+from torrent import ClientTorrent
 
-# The Driver Code
 if __name__ == '__main__':
-    
-    # Select filename and extract torrent info
+    if DEBUG:
+        print("[main.py] Starting torrent client")
     filename = sys.argv[1]
-    contents = getRawFile(filename)
-    metainfo = getTorrentMetaInfo(contents)
+    if DEBUG:
+        print(f"[main.py] Loading torrent file: {filename}")
+    contents = get_raw_file(filename)
+    if DEBUG:
+        print(f"[main.py] Torrent file loaded, size: {len(contents)} bytes")
+    meta_info = get_torrent_meta_info(contents)
+    if DEBUG:
+        print(f"[main.py] Metadata extracted: {meta_info['info']['name']}")
 
-    # Create 'torr' object
-    torr = Client_Torrent(metainfo,con_menu)
+    torrent = ClientTorrent(meta_info, connection_manager)
+    if DEBUG:
+        print("[main.py] ClientTorrent initialized")
 
-    # Send request to tracker
-    clientRequest(torr,metainfo,metainfo['announce'])
-    
-    # Connecting to the peers for data transfer
-    torr.torrent_conn()
-    con_menu.start_loop()
+    client_request(torrent, meta_info, meta_info['announce'])
+    if DEBUG:
+        print(f"[main.py] Tracker request completed, {len(torrent.peer_list)} peers found")
+
+    torrent.connect_to_peers()
+    if DEBUG:
+        print(f"[main.py] Connecting to {len(torrent.peer_list)} peers")
+    connection_manager.start_loop()

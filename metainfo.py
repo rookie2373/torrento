@@ -1,180 +1,154 @@
-# Script to decode the torrent metainfo file.
-
-# Import required modules
 import os
 import copy
 import hashlib
 import bencodepy
 import random
+from config import DEBUG, MB_FACTOR
 
-# The final metainfo passed to tracker request
-metaInfo = {}
+META_INFO = {}
 
-# for debugging
-debug = False
-megabyteFactor = 1048576
+def get_raw_file(filename):
+    if DEBUG:
+        print(f"[metainfo.py] Loading file: {filename}")
+    try:
+        with open(filename, 'rb') as f:
+            contents = f.read()
+            if DEBUG:
+                print(f"[metainfo.py] File loaded successfully, size: {len(contents)} bytes")
+            return contents
+    except FileNotFoundError:
+        if DEBUG:
+            print(f"[metainfo.py] ERROR: File not found: {filename}")
+        raise
 
-# Function to get raw bencoded metadata
-def getRawFile(filename):
-    if(debug):
-        print(filename)
-    with open(filename,'rb') as file:
-        contents = file.read()
-        return contents
+def get_torrent_meta_info(bencode_data):
+    if not bencode_data:
+        print("[metainfo.py] ERROR: File is empty")
+        return None
+    if DEBUG:
+        print("[metainfo.py] Decoding bencode data")
+    try:
+        meta_data = bencodepy.decode(bencode_data)
+        if DEBUG:
+            print(f"[metainfo.py] Bencode decoded, type: {type(meta_data)}")
 
-# Function to process the raw torrent file
-def getTorrentMetaInfo(bencodeData):
-    # Check if the file is empty or not
-    if not bencodeData:
-        print("Error: File is empty")
-    # Start decoding the data
-    else:
-        # decoding the bencoded data into an Ordered Dictionary
-        metaData = bencodepy.decode(bencodeData)
+        encoding = meta_data.get(b'encoding')
+        META_INFO['encoding'] = encoding
+        if DEBUG:
+            print(f"[metainfo.py] Encoding: {encoding}")
 
-        if(debug):
-            print(type(metaData))
+        announce = meta_data.get(b'announce')
+        META_INFO['announce'] = announce
 
-        # Get the string encoding format
-        encoding = metaData.get(b'encoding')
-        metaInfo['encoding'] = encoding
-
-        if(debug):
-            print(metaInfo['encoding'])
-
-        # metaData contains announce variable of the dictionary 
-        # which is the assigned the url of trackers
-        announce = metaData.get(b'announce')
-        metaInfo['announce'] = announce
-
-        # If announceList present --> extract announce list
         if not announce:
-            announceList = metaData.get(b'announce-list')
-            metaInfo['announce_list'] = announceList
-            metaInfo['announce'] = announceList[3]
+            if DEBUG:
+                print("[metainfo.py] Using announce-list")
+            announce_list = meta_data.get(b'announce-list')
+            META_INFO['announce_list'] = announce_list
+            META_INFO['announce'] = announce_list[3]
 
-        if(debug):
-            print(metaInfo['announce'])
+        if DEBUG:
+            print(f"[metainfo.py] Announce: {META_INFO['announce']}")
 
-        # metaData also contains the fields creation date , comment , created by
-        # and announced_list but we are ignoring this field because these are optional
-        
-        # the info dictionary of metainfo file
-        info = metaData.get(b'info')
+        info = meta_data.get(b'info')
 
-        # if(debug):
-        #     print(info)
+        if DEBUG:
+            print("[metainfo.py] Processing info dict")
 
-        # if(debug):
-        #     print(bencodepy.encode(info))
+        info_hash = hashlib.sha1(bencodepy.encode(info)).digest()
+        if DEBUG:
+            print(f"[metainfo.py] Info hash: {info_hash.hex()[:16]}...")
 
-        # encrypting the info using secure hash algorithm  
-        # and were digest return encoded data in bytes
-        infoHash = hashlib.sha1(bencodepy.encode(info)).digest()
+        info_data = process_file_info(info)
 
-        # Processing the information of the actual file
-        infoData = processFileInfo(info)
+        META_INFO['info'] = info_data
+        META_INFO['info_hash'] = info_hash
+        if DEBUG:
+            print(f"[metainfo.py] Metadata extraction complete")
 
-        # Appending info data and hash
-        metaInfo['info'] = infoData
-        metaInfo['info_hash'] = infoHash
+        return META_INFO
+    except Exception as e:
+        if DEBUG:
+            print(f"[metainfo.py] ERROR decoding metadata: {str(e)}")
+        raise
 
-        return metaInfo
+def process_file_info(file_info):
+    if DEBUG:
+        print("[metainfo.py] Processing file info")
+    info_dict = {}
 
-# Function to process the info dictionary
-def processFileInfo(info):
-    # The final info dictionary
-    infoDict = {}
+    info_dict['piece_length'] = file_info[b'piece length']
 
-    # piece length is number of bytes in each piece
-    infoDict['piece_length'] = info[b'piece length']
+    if DEBUG:
+        print(f"[metainfo.py] Piece length: {info_dict['piece_length'] / MB_FACTOR:.2f} MB")
 
-    if(debug):
-        print(str(infoDict['piece_length']/megabyteFactor) + " MB")
+    SHA1_LENGTH = 20
+    pieces = file_info[b'pieces']
 
-    # String consisting of the concatenation of all 20-byte sha1 hash values
-    # one per piece 
-    Sha1_len = 20
-    pieces = info[b'pieces']
-
-    if(debug):
+    if DEBUG:
         print(type(pieces))
 
-    # Splitting the "pieces" into the individual hashes of each piece
-    piecesList = []
-    for offset in range(0, len(pieces), Sha1_len):
-        piecesList.append(pieces[offset:offset + Sha1_len]) 
+    piece_list = []
+    for offset in range(0, len(pieces), SHA1_LENGTH):
+        piece_list.append(pieces[offset:offset + SHA1_LENGTH])
 
-    # Appending the pieces_list 
-    infoDict['pieces'] = piecesList
+    info_dict['pieces'] = piece_list
 
-    # if(debug):
-    #     print(info_dict['pieces'])
+    if DEBUG:
+        print(info_dict['pieces'])
 
-    # Appending the name of the file
-    name = info[b'name'].decode('utf-8')
-    infoDict['name'] = name
+    name = file_info[b'name'].decode('utf-8')
+    info_dict['name'] = name
 
-    if(debug):
-        print(infoDict['name'])
+    if DEBUG:
+        print(info_dict['name'])
 
-    # files is field which contains the keys .i.e length , md5sum, path
-    # It is only non void if there are multiple files
-    filesDict = info.get(b'files')
+    files_dict = file_info.get(b'files')
 
-    # if(debug):
-    #     print(files_dict)  
+    if DEBUG:
+        print(files_dict)
 
-    # checking if the file single or there are multiple files
-    if not filesDict:
-        # Appending data for a single file
-        infoDict['format'] = 'single file'
-        infoDict['files'] = None  # Single File
-        infoDict['length'] = info[b'length']
+    if not files_dict:
+        info_dict['format'] = 'single file'
+        info_dict['files'] = None
+        info_dict['length'] = file_info[b'length']
 
-        if(debug):
-            print(str(infoDict['length']/megabyteFactor) + " MB")
+        if DEBUG:
+            print(str(info_dict['length'] / MB_FACTOR) + " MB")
 
     else:
-        # Appending data for multiple files
-        infoDict['format'] = 'multiple file'
-        infoDict['files'] = []
-        
-        # Extracting multiple files' data
-        for file in filesDict:
-            # path field containing one or more string which
-            # represents path and filename which in bencoded
-            Path = []
+        info_dict['format'] = 'multiple file'
+        info_dict['files'] = []
 
-            # if(debug):
-            #     print(file)
-            #     print()
-            #     print()
-            #     print()
+        for file_data in files_dict:
+            path = []
 
-            # Joining the path
-            for location in file[b'path']:
-                Path.append(location.decode('utf-8'))
+            if DEBUG:
+                print(file_data)
+                print()
+                print()
+                print()
 
-                # if(debug):
-                #     print(location)
+            for location in file_data[b'path']:
+                path.append(location.decode('utf-8'))
 
-            # Creating the files dictionary
-            infoDict['files'].append(
+                if DEBUG:
+                    print(location)
+
+            info_dict['files'].append(
                 {
-                    'length': file[b'length'],
-                    'path': os.path.join(*Path)
+                    'length': file_data[b'length'],
+                    'path': os.path.join(*path)
                 }
             )
 
-        if(debug):
-            print(infoDict["files"])
+        if DEBUG:
+            print(info_dict["files"])
 
-        # Over all size of all files
-        length = sum(file["length"] for file in infoDict['files'])
-        infoDict['length'] = length
+        length = sum(file_data["length"] for file_data in info_dict['files'])
+        info_dict['length'] = length
 
-        if(debug):
-            print(str(infoDict['length']/megabyteFactor) + " MB")
+        if DEBUG:
+            print(str(info_dict['length'] / MB_FACTOR) + " MB")
 
-    return infoDict
+    return info_dict

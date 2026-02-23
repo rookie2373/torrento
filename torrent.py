@@ -1,137 +1,131 @@
-#  Managing Peers and Pieces
 
 from peers import Peers
-from torr_download import torr_Download
-from config import CONFIG
+from torr_download import TorrentDownload
+from config import CONFIG, DEBUG
 import time
 
-debug = False
-
-# 
-class Client_Torrent():
-    def __init__(self, meta_struct, con_menu):
-        self.meta_struct = meta_struct
-        self.con_menu = con_menu  
-        self.present_peer = []
+class ClientTorrent():
+    def __init__(self, torrent_metadata, connection_manager):
+        if DEBUG:
+            print(f"[torrent.py] ClientTorrent initialized for: {torrent_metadata['info']['name']}")
+        self.torrent_metadata = torrent_metadata
+        self.connection_manager = connection_manager
+        self.present_peers = []
         self.peer_list = []
 
         self.complete = False
-        
-        # creating the empty list for requested peer object
-        self.piece_request = [[] for i in
-                              self.meta_struct['info']['pieces']]
 
-        self.torr_down_list = []
-        self.torr_down = None
+        self.piece_request = [[] for piece in
+                              self.torrent_metadata['info']['pieces']]
 
-        self.conn_failed_history = []
-        self.Completed_pieces = [0 for i in meta_struct['info']['pieces']]
-        
-        # to store the downloaded pieces
-        self.chunks = [[] for i in self.meta_struct['info']['pieces']]  
-        self.rare_inx = []
+        self.torrent_download_list = []
+        self.current_torrent_download = None
 
-    # Function to connect the peers
-    def torrent_conn(self):
-        l = len(self.peer_list)
+        self.connection_failed_history = []
+        self.completed_pieces = [0 for piece in torrent_metadata['info']['pieces']]
+
+        self.chunks = [[] for piece in self.torrent_metadata['info']['pieces']]
+        self.rare_index = []
+
+    def connect_to_peers(self):
+        if DEBUG:
+            print(f"[torrent.py] Connecting to peers, max_peers: {CONFIG['max_peers']}, available: {len(self.peer_list)}")
+        peer_list_length = len(self.peer_list)
         peer_count = 0
 
         while (peer_count < CONFIG['max_peers'] and peer_count < len(self.peer_list)):
-            self.peer_list[peer_count].make_conn()
-            self.torr_down = self.torr_down_list[peer_count]
+            if DEBUG:
+                print(f"[torrent.py] Connecting to peer {peer_count+1}/{min(CONFIG['max_peers'], len(self.peer_list))}")
+            self.peer_list[peer_count].make_connection()
+            self.current_torrent_download = self.torrent_download_list[peer_count]
             peer_count += 1
 
-    # Function to initialize torrent object
-    def make_peerlist(self, peer_dict):
-        # check if peer is already present
+    def make_peer_list(self, peer_dict):
         each_peer = self.check_peer(**peer_dict)
-        
+
         if each_peer:
+            if DEBUG:
+                print(f"[torrent.py] Peer {peer_dict['ip']}:{peer_dict['port']} already in list")
             return each_peer
 
-        # peer object
+        if DEBUG:
+            print(f"[torrent.py] Adding new peer: {peer_dict['ip']}:{peer_dict['port']}")
         peer = Peers(self, **peer_dict)
-        # creating obj of torr_Download class for each peer
-        torr_obj = torr_Download(peer, self)
+        torrent_obj = TorrentDownload(peer, self)
 
-        self.torr_down_list.append(torr_obj)
+        self.torrent_download_list.append(torrent_obj)
         self.peer_list.append(peer)
 
         return peer
 
-    # check if a peer already present
     def check_peer(self, ip, port, peer_id=None):
-        for peers in (self.present_peer, self.peer_list):
-            for i in peers:
-                # only checking ip and port bcus peer_id may be different for same ip and port
-                if i.ip == ip and i.port == port:  
-                    return i
+        for peer_collection in (self.present_peers, self.peer_list):
+            for peer in peer_collection:
+                if peer.ip == ip and peer.port == port:
+                    return peer
         return False
 
-    def check_torr_down_obj(self, peer):
-        for i in range(len(self.peer_list)):
-            if self.peer_list[i] == peer:
-                self.torr_down = self.torr_down_list[i]
+    def check_torrent_download_object(self, peer):
+        for peer_index in range(len(self.peer_list)):
+            if self.peer_list[peer_index] == peer:
+                self.current_torrent_download = self.torrent_download_list[peer_index]
 
-    # Function to re establish connection to a peer
     def peer_stopped_recovery(self):
-        # if download complete --> return
+        if DEBUG:
+            print("[torrent.py] Peer recovery initiated")
         if self.complete:
             return
-        # check every peer
-        for i in self.peer_list:
-            if not i.connect_failed:
+
+        for peer in self.peer_list:
+            if not peer.connection_failed:
                 continue
 
-            if i in self.conn_failed_history:
-                # atmost one try to connect to that peer
+            if peer in self.connection_failed_history:
                 continue
-            self.conn_failed_history.append(i)
+            self.connection_failed_history.append(peer)
 
-            while not i.con:
+            while not peer.connection:
                 try:
-                    i.make_conn()
-                    i.con = 1
-                    if(debug):
-                        print(__name__ + ".py")
-                        print('Current Peer is failed : Starting New Peer :', i)
-                except:
+                    peer.make_connection()
+                    peer.connection = 1
+                    if DEBUG:
+                        print(f"[torrent.py] Starting new peer connection: {peer.ip}:{peer.port}")
+                except Exception as e:
+                    if DEBUG:
+                        print(f"[torrent.py] Failed to connect to peer {peer.ip}:{peer.port}: {str(e)}")
                     time.sleep(2)
 
-            if i.con:
+            if peer.connection:
                 break
         return
 
-    # storing the piece into the complete list 
-    def store_piece(self, piece_inx, data):
-        self.Completed_pieces[piece_inx] = data
-        # the piece which is complete
-        self.chunks[piece_inx] = 0
+    def store_piece(self, piece_index, data):
+        if DEBUG:
+            print(f"[torrent.py] Storing piece {piece_index}, {len(data)} bytes")
+        self.completed_pieces[piece_index] = data
+        self.chunks[piece_index] = 0
 
-    # calculating the connected peers
-    def con_count(self):
+    def get_connection_count(self):
         count = 0
         for peer in self.peer_list:
-            if peer.con:
+            if peer.connection:
                 count += 1
         return count
 
-    # assigning  the count of each index of piece
-    def rarest_1st(self):
-        total_pieces = len(self.meta_struct['info']['pieces'])
+    def request_rarest_first(self):
+        total_pieces = len(self.torrent_metadata['info']['pieces'])
 
-        for i in range(total_pieces):
-            con_ct = self.con_count()
-            x = 0
-            temp_count = 0
+        for piece_index in range(total_pieces):
+            connection_count = self.get_connection_count()
+            peer_index = 0
+            peer_count = 0
 
-            while (x < con_ct):
-                if self.peer_list[x].peer_piece_list[i]:
-                    temp_count += 1
-                x += 1
-            self.rare_inx.append((i, temp_count))
+            while (peer_index < connection_count):
+                if self.peer_list[peer_index].peer_piece_list[piece_index]:
+                    peer_count += 1
+                peer_index += 1
+            self.rare_index.append((piece_index, peer_count))
 
-    # Set the rarest index
-    def set_rar_inx(self, inx_tuple):
-        if self.rare_inx and inx_tuple in self.rare_inx:
-            self.rare_inx.remove(inx_tuple)
+    def set_rarest_index(self, index_tuple):
+        if self.rare_index and index_tuple in self.rare_index:
+            self.rare_index.remove(index_tuple)
