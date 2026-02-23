@@ -1,9 +1,8 @@
 
 import hashlib
 import logging
-import time
-from config import DEBUG, MB_FACTOR
-from Write_data import WriteData
+from config import DEBUG
+from writedata import WriteData
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +15,6 @@ class TorrentDownload():
 
         self.complete = self.torrent.completed_pieces
         self.chunks = self.torrent.chunks
-        
-        # For tracking download speed and ETA
-        self.start_time = time.time()
-        self.last_display_time = self.start_time
-        self.last_complete_count = 0
 
     def check_block(self, piece_index, chunk_start, payload):
         if self.complete[piece_index]:
@@ -108,52 +102,14 @@ class TorrentDownload():
         pieces_length = len(self.complete)
         up_to_complete = 100.0 * pieces_sum / pieces_length
         
-        # Calculate bytes downloaded and total
-        bytes_per_piece = self.torrent.torrent_metadata['info']['piece_length']
-        total_bytes = self.torrent.torrent_metadata['info']['length']
-        bytes_downloaded = pieces_sum * bytes_per_piece
-        
-        # Clamp to total (in case of incomplete last piece)
-        bytes_downloaded = min(bytes_downloaded, total_bytes)
-        
-        # Calculate speed and ETA
-        elapsed_time = time.time() - self.start_time
-        if elapsed_time > 0:
-            speed_bps = bytes_downloaded / elapsed_time  # bytes per second
-            speed_mbps = speed_bps / (1024 * 1024)
-            
-            bytes_remaining = total_bytes - bytes_downloaded
-            if speed_bps > 0:
-                eta_seconds = int(bytes_remaining / speed_bps)
-                eta_hours = eta_seconds // 3600
-                eta_minutes = (eta_seconds % 3600) // 60
-                eta_secs = eta_seconds % 60
-                eta_str = f"{eta_hours:02d}:{eta_minutes:02d}:{eta_secs:02d}"
-            else:
-                eta_str = "--:--:--"
-        else:
-            speed_mbps = 0
-            eta_str = "--:--:--"
-        
-        # ANSI color codes
-        MAGENTA = '\033[95m'
-        GRAY = '\033[90m'
-        GREEN = '\033[92m'
-        RESET = '\033[0m'
-        
-        # Create progress bar (40 chars)
+        # Create progress bar
         bar_length = 40
         completed_bars = int((up_to_complete / 100) * bar_length)
-        filled = f'{MAGENTA}█{RESET}' * completed_bars
-        empty = f'{GRAY}░{RESET}' * (bar_length - completed_bars)
+        remaining_bars = bar_length - completed_bars
+        progress_bar = '█' * completed_bars + '░' * remaining_bars
         
-        # Convert to MB
-        mb_downloaded = bytes_downloaded / MB_FACTOR
-        mb_total = total_bytes / MB_FACTOR
-        
-        # Format and display
-        progress_display = f'{filled}{empty} {mb_downloaded:6.1f}/{mb_total:.1f} MB {speed_mbps:4.1f} MB/s eta {eta_str}'
-        print(f'\r{progress_display}', end='', flush=True)
+        # Display with nice formatting
+        print(f'\r[{progress_bar}] {up_to_complete:6.1f}% ({pieces_sum}/{pieces_length} pieces)', end='', flush=True)
 
     def check_download_complete(self):
         for piece in self.complete:

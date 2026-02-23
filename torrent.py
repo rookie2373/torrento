@@ -1,13 +1,15 @@
 
 from peers import Peers
-from torr_download import TorrentDownload
+from download import TorrentDownload
 from config import CONFIG, DEBUG
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ClientTorrent():
     def __init__(self, torrent_metadata, connection_manager):
-        if DEBUG:
-            print(f"[torrent.py] ClientTorrent initialized for: {torrent_metadata['info']['name']}")
+        logger.info(f"ClientTorrent initialized for: {torrent_metadata['info']['name']}")
         self.torrent_metadata = torrent_metadata
         self.connection_manager = connection_manager
         self.present_peers = []
@@ -28,14 +30,12 @@ class ClientTorrent():
         self.rare_index = []
 
     def connect_to_peers(self):
-        if DEBUG:
-            print(f"[torrent.py] Connecting to peers, max_peers: {CONFIG['max_peers']}, available: {len(self.peer_list)}")
+        logger.info(f"Connecting to peers, max_peers: {CONFIG['max_peers']}, available: {len(self.peer_list)}")
         peer_list_length = len(self.peer_list)
         peer_count = 0
 
         while (peer_count < CONFIG['max_peers'] and peer_count < len(self.peer_list)):
-            if DEBUG:
-                print(f"[torrent.py] Connecting to peer {peer_count+1}/{min(CONFIG['max_peers'], len(self.peer_list))}")
+            logger.debug(f"Connecting to peer {peer_count+1}/{min(CONFIG['max_peers'], len(self.peer_list))}")
             self.peer_list[peer_count].make_connection()
             self.current_torrent_download = self.torrent_download_list[peer_count]
             peer_count += 1
@@ -44,12 +44,10 @@ class ClientTorrent():
         each_peer = self.check_peer(**peer_dict)
 
         if each_peer:
-            if DEBUG:
-                print(f"[torrent.py] Peer {peer_dict['ip']}:{peer_dict['port']} already in list")
+            logger.debug(f"Peer {peer_dict['ip']}:{peer_dict['port']} already in list")
             return each_peer
 
-        if DEBUG:
-            print(f"[torrent.py] Adding new peer: {peer_dict['ip']}:{peer_dict['port']}")
+        logger.debug(f"Adding new peer: {peer_dict['ip']}:{peer_dict['port']}")
         peer = Peers(self, **peer_dict)
         torrent_obj = TorrentDownload(peer, self)
 
@@ -71,8 +69,7 @@ class ClientTorrent():
                 self.current_torrent_download = self.torrent_download_list[peer_index]
 
     def peer_stopped_recovery(self):
-        if DEBUG:
-            print("[torrent.py] Peer recovery initiated")
+        logger.debug("Peer recovery initiated")
         if self.complete:
             return
 
@@ -88,11 +85,9 @@ class ClientTorrent():
                 try:
                     peer.make_connection()
                     peer.connection = 1
-                    if DEBUG:
-                        print(f"[torrent.py] Starting new peer connection: {peer.ip}:{peer.port}")
+                    logger.info(f"Starting new peer connection: {peer.ip}:{peer.port}")
                 except Exception as e:
-                    if DEBUG:
-                        print(f"[torrent.py] Failed to connect to peer {peer.ip}:{peer.port}: {str(e)}")
+                    logger.error(f"Failed to connect to peer {peer.ip}:{peer.port}: {str(e)}")
                     time.sleep(2)
 
             if peer.connection:
@@ -100,8 +95,7 @@ class ClientTorrent():
         return
 
     def store_piece(self, piece_index, data):
-        if DEBUG:
-            print(f"[torrent.py] Storing piece {piece_index}, {len(data)} bytes")
+        logger.debug(f"Storing piece {piece_index}, {len(data)} bytes")
         self.completed_pieces[piece_index] = data
         self.chunks[piece_index] = 0
 

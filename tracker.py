@@ -3,8 +3,11 @@ import struct
 import requests
 import bencodepy
 import socket
+import logging
 
 from config import CONFIG, DEBUG
+
+logger = logging.getLogger(__name__)
 
 CONNECTION_ID_INITIAL = 0x41727101980
 DEFAULT_TRANSACTION_ID = 5400
@@ -14,8 +17,7 @@ BITS_PER_BYTE = 8
 BYTES_PER_PEER_ENTRY = 6
 
 def client_request(torrent, metainfo, announce):
-    if DEBUG:
-        print("[tracker.py] Starting tracker request")
+    logger.info("Starting tracker request")
     if 'announce_list' in metainfo:
         announce_str = str(announce[0])
     else:
@@ -36,8 +38,7 @@ def client_request(torrent, metainfo, announce):
         elif url_parsing_status == 1:
             url += char
 
-    if DEBUG:
-        print(f"[tracker.py] Tracker URL: {url}:{port}, Protocol: {protocol}")
+    logger.info(f"Tracker URL: {url}:{port}, Protocol: {protocol}")
 
     if protocol == 'udp':
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -121,40 +122,33 @@ def construct_port(port_tuple):
     return int(port)
 
 def decode_response(tracker_response):
-    if DEBUG:
-        print("[tracker.py] Decoding tracker response")
+    logger.debug("Decoding tracker response")
     response_dict = {}
 
     if b'failure reason' in tracker_response:
         error_msg = tracker_response[b'failure reason'].decode('utf-8')
-        if DEBUG:
-            print(f"[tracker.py] ERROR: {error_msg}")
+        logger.error(f"Tracker error: {error_msg}")
         print(error_msg)
 
     response_dict['interval'] = int(tracker_response[b'interval'])
 
-    if DEBUG:
-        print(f"[tracker.py] Interval: {response_dict['interval']} seconds")
+    logger.debug(f"Interval: {response_dict['interval']} seconds")
 
     if b'complete' in tracker_response:
         response_dict['complete'] = int(tracker_response[b'complete'])
     else:
         response_dict['complete'] = None
 
-    if DEBUG:
-        print(f"[tracker.py] Complete (seeders): {response_dict['complete']}")
+    logger.debug(f"Complete (seeders): {response_dict['complete']}")
 
     if b'incomplete' in tracker_response:
         response_dict['incomplete'] = int(tracker_response[b'incomplete'])
     else:
         response_dict['incomplete'] = None
         
+    logger.debug(f"Incomplete (leechers): {response_dict['incomplete']}")
     if DEBUG:
-        print(f"[tracker.py] Incomplete (leechers): {response_dict['incomplete']}")
-    if DEBUG:
-        print(__name__ + ".py")
-        print(response_dict['tracker_id'])
-        print()
+        print("[tracker.py] Interval:", response_dict['interval'])
 
     peers = tracker_response[b'peers']
 
@@ -167,22 +161,20 @@ def decode_response(tracker_response):
     return response_dict
 
 def decode_peer_list(peers):
-    if DEBUG:
-        print(f"[tracker.py] Decoding peer list, format: {type(peers)}")
+    logger.debug(f"Decoding peer list, format: {type(peers).__name__}")
     peer_list = {}
     if isinstance(peers, list):
         peer_list = decode_for_dict_model(peers)
     elif isinstance(peers, bytes):
         peer_list = decode_for_binary_model(peers)
     else:
+        logger.error("Invalid peer list format")
         print('[tracker.py] Error: peer_list not formattable')
-    if DEBUG:
-        print(f"[tracker.py] Decoded {len(peer_list)} peers")
+    logger.info(f"Decoded {len(peer_list)} peers")
     return peer_list
 
 def decode_for_dict_model(list_of_peers):
-    if DEBUG:
-        print(f"[tracker.py] Decoding peer list in dict model format, {len(list_of_peers)} peers")
+    logger.debug(f"Decoding peer list in dict model format, {len(list_of_peers)} peers")
     peer_list = []
     for peer in list_of_peers:
         peer_dict = {}
@@ -194,12 +186,12 @@ def decode_for_dict_model(list_of_peers):
     return peer_list
 
 def decode_for_binary_model(bytes_peers):
-    if DEBUG:
-        print(f"[tracker.py] Decoding peer list in binary model format, {len(bytes_peers)} bytes")
+    logger.debug(f"Decoding peer list in binary model format, {len(bytes_peers)} bytes")
     BYTES_FORMAT = '!BBBBH'
     bytes_per_peer = struct.calcsize(BYTES_FORMAT)
 
     if len(bytes_peers) % bytes_per_peer != 0:
+        logger.error("Invalid peer list length")
         print('[tracker.py] Error: Invalid peer list length')
 
     peers = []
@@ -213,8 +205,7 @@ def decode_for_binary_model(bytes_peers):
         peer_dict['port'] = int(peer_entry[4])
         list_of_peers.append(peer_dict)
 
-    if DEBUG:
-        print(f"[tracker.py] Decoded {len(list_of_peers)} peers from binary data")
+    logger.debug(f"Decoded {len(list_of_peers)} peers from binary data")
     return list_of_peers
 
 

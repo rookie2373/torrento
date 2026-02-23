@@ -3,25 +3,26 @@ import threading
 import queue
 import struct
 import time
+import logging
 
 from config import DEBUG
 
+logger = logging.getLogger(__name__)
+
+
 class ConnectionManager():
     def __init__(self):
-        if DEBUG:
-            print("[connection.py] ConnectionManager initialized")
+        logger.debug("ConnectionManager initialized")
         self.connections = []
         self.is_running = 0
 
     def connect_peer(self, peers):
-        if DEBUG:
-            print(f"[connection.py] Creating connection thread for peer {peers.ip}:{peers.port}")
+        logger.debug(f"Creating connection thread for peer {peers.ip}:{peers.port}")
         connection_result = ConnectionThread(peers)
         self.connections.append(connection_result)
 
     def start_loop(self):
-        if DEBUG:
-            print(f"[connection.py] Starting connection manager loop with {len(self.connections)} connections")
+        logger.info(f"Starting connection manager loop with {len(self.connections)} connections")
         self.is_running = 1
         while self.is_running:
             for connection in self.connections:
@@ -31,8 +32,7 @@ class ConnectionManager():
 
     def end_loop(self):
         self.is_running = 0
-        if DEBUG:
-            print("[connection.py] Closing all threads")
+        logger.info("Closing all threads")
         for connection in self.connections:
             connection.stop_thread()
             if connection.thread.is_alive():
@@ -54,12 +54,10 @@ class PeerConnection():
 
     def menu(self):
         try:
-            if DEBUG:
-                print(f"[connection.py] Menu starting for peer {self.peer.ip}:{self.peer.port}")
+            logger.debug(f"Menu starting for peer {self.peer.ip}:{self.peer.port}")
             self.establish_tcp_connection()
         except ConnectionError:
-            if DEBUG:
-                print(f"[connection.py] Connection error for peer {self.peer.ip}:{self.peer.port}")
+            logger.error(f"Connection error for peer {self.peer.ip}:{self.peer.port}")
             self.connection_failed = 1
 
             self.tcp_socket.close()
@@ -75,17 +73,14 @@ class PeerConnection():
         self.tcp_socket = None
 
     def establish_tcp_connection(self):
-        if DEBUG:
-            print(f"[connection.py] Establishing TCP connection to {self.peer.ip}:{self.peer.port}")
+        logger.debug(f"Establishing TCP connection to {self.peer.ip}:{self.peer.port}")
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.tcp_socket.settimeout(3.0)
         try:
             self.tcp_socket.connect((self.peer.ip, self.peer.port))
-            if DEBUG:
-                print(f"[connection.py] TCP connection established to {self.peer.ip}:{self.peer.port}")
+            logger.info(f"TCP connection established to {self.peer.ip}:{self.peer.port}")
         except OSError as e:
-            if DEBUG:
-                print(f"[connection.py] ERROR: TCP connection failed to {self.peer.ip}:{self.peer.port}: {str(e)}")
+            logger.error(f"TCP connection failed to {self.peer.ip}:{self.peer.port}: {str(e)}")
 
         self.connection_established = 1
         self.mark_connection_complete()
@@ -105,9 +100,7 @@ class PeerConnection():
                         self.tcp_socket.send(data)
                     except OSError:
                         self.connection_lost = 1
-                        if DEBUG:
-                            print(__name__ + ".py")
-                            print("Connection lost")
+                        logger.error("Connection lost")
                     if self.connection_lost:
                         return
             except:
@@ -121,7 +114,7 @@ class PeerConnection():
         try:
             data = self.tcp_socket.recv(4096)
         except ConnectionError:
-            print("connection lost")
+            logger.error("Connection lost")
             self.connection_lost = 1
             return
         except socket.timeout:

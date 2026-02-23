@@ -2,14 +2,16 @@
 import struct
 import random
 import sys
+import logging
 
 from config import CONFIG, DEBUG
+
+logger = logging.getLogger(__name__)
 
 
 class Peers():
     def __init__(self, torrent, ip, port, peer_id=None):
-        if DEBUG:
-            print(f"[peers.py] Initializing Peers object for {ip}:{port}")
+        logger.debug(f"Initializing Peers object for {ip}:{port}")
         self.ip = ip
         self.port = port
         self.torrent = torrent
@@ -42,16 +44,11 @@ class Peers():
             self.peer_piece_list.append(0)
 
     def make_connection(self):
-        if DEBUG:
-            print(f"[peers.py] Making connection to {self.ip}:{self.port}")
+        logger.debug(f"Making connection to {self.ip}:{self.port}")
         self.torrent.connection_manager.connect_peer(self)
 
     def handshake(self):
-        if DEBUG:
-            print(f"[peers.py] Performing handshake with {self.ip}:{self.port}")
-        if DEBUG:
-            print(__name__ + ".py")
-            print("Sending handshake")
+        logger.debug(f"Performing handshake with {self.ip}:{self.port}")
         response = self.make_handshake(
             self.torrent.torrent_metadata['info_hash'], CONFIG['peer_id'])
         self.send_message(response)
@@ -67,16 +64,14 @@ class Peers():
             self.connection.add_data(data)
 
     def handle_failed_connection(self):
-        if DEBUG:
-            print(f"[peers.py] Connection failed with peer {self.ip}:{self.port}")
+        logger.error(f"Connection failed with peer {self.ip}:{self.port}")
         self.connection_failed = 1
         self.connection = None
         self.torrent.peer_stopped_recovery()
 
     def peer_connection_made(self, connection):
         self.connection = connection
-        if DEBUG:
-            print(f"[peers.py] Peer connection established with {self.ip}:{self.port}")
+        logger.info(f"Peer connection established with {self.ip}:{self.port}")
         self.downloading()
 
     def pass_message(self, **arguments):
@@ -111,8 +106,7 @@ class Peers():
         elif msg_type == 'request':
             msg_number = 6
 
-            if DEBUG:
-                print(f"[peers.py] Sending request for piece {piece_index}, offset {starting_point}, length {block_length}")
+            logger.debug(f"Sending request for piece {piece_index}, offset {starting_point}, length {block_length}")
 
             payload = struct.pack(
                 '!LLL', piece_index, starting_point, block_length)
@@ -125,8 +119,7 @@ class Peers():
         return message
 
     def parse_handshake_response(self, data):
-        if DEBUG:
-            print(f"[peers.py] Parsing handshake response from {self.ip}:{self.port}")
+        logger.debug(f"Parsing handshake response from {self.ip}:{self.port}")
         protocol_string_length = int(data[0])
         remaining_data = data[1:49 + protocol_string_length]
 
@@ -142,8 +135,7 @@ class Peers():
 
         if decoded_dict['pstr'] == 'BitTorrent protocol':
             self.connection_start = 1
-            if DEBUG:
-                print(f"[peers.py] Handshake successful with {self.ip}:{self.port}")
+            logger.debug(f"Handshake successful with {self.ip}:{self.port}")
             self.downloading()
             return extra_data
 
@@ -177,8 +169,7 @@ class Peers():
         msg_type = self.msg_types[msg_number]
 
         if DEBUG:
-            print(__name__ + ".py")
-            print("Peer's message :", msg_number, msg_type)
+            logger.debug(f"Peer's message: {msg_number} {msg_type}")
 
         self.set_peer_status(msg_dict, msg_type)
         return total_bytes
@@ -204,9 +195,7 @@ class Peers():
         if not self.connection_start:
             self.handshake()
         elif self.peer_choking:
-            if DEBUG:
-                print(__name__ + ".py")
-                print("send interested")
+            logger.debug("Sending interested message")
             self.pass_message(msg_type='interested')
         else:
             if not self.torrent.rare_index:
