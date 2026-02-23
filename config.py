@@ -4,7 +4,7 @@ import logging
 DEBUG = False
 
 # Configure logging - least verbose by default
-LOG_LEVEL = logging.DEBUG if DEBUG else logging.WARNING
+LOG_LEVEL = logging.DEBUG if DEBUG else logging.ERROR
 
 logging.basicConfig(
     level=LOG_LEVEL,
