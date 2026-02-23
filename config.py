@@ -1,12 +1,9 @@
-# The client configuration file
-
 import math
 
+DEBUG = True
+MB_FACTOR = 1048576
 CONFIG = {
-    # unique id for client
-    'peer_id': b'QQ-0000-000000000000', 
-    # portion of data that a client requests from the peer
-    'block_length': int(math.pow(2,14)), 
-    # numwant
-    'max_peers': 10 
+    'peer_id': b'QQ-0000-000000000000',
+    'block_length': int(math.pow(2, 14)),
+    'max_peers': 10
 }
