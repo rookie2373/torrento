@@ -1,43 +1,43 @@
-# bittorrent
-Members  
+# Torrento
+## Members  
 [Rushikesh Kundkar](https://gitlab.com/RRkundkar777)  
 [Sanket Chaudhary](https://gitlab.com/sanketchaudhari.in20)
 
-**Description:**
+## Description
 
-1. A Python base BitTorrent client supporting concurrent peer connections and multiple simultaneous torrent downloads.
-2. This project was an exercise of networking protocol called peer to peer protocol 
+1. A Python base torrent client supporting concurrent peer connections and multiple simultaneous torrent downloads.
+2. This project was an exercise of networking P2P protocol.
 
-**Overview :**
+## Overview
 
-- **1.main.py :** this file is like menu which will access functionallity
+- **1.main.py :** driver / runner
 
-- **2.metainfo.py :** which is used to decode the bencoded .torrent file
+- **2.metainfo.py :** decode the bencoded .torrent
 
-- **3.tracker.py :** This file basically used for sending the http and udp request and getting the list of peers 
+- **3.tracker.py :** send the http / udp requests and get list of peers
 
-- **4.Config :** peer configurations
+- **4.config.py :** global configurations
 
-- **5.peer.py:** making handshake and requesting the peers for piece maintaining the all data  
+- **5.peer.py:** make handshake and request the peers for piece maintaining all data
 
-- **6.Connection.py :**  making connections with multiple peers at same timee (for multiple connection using threading)
+- **6.connection.py :**  make connections with multiple peers at the same time
 
-- **7.torrent.py :**  maintaining peers objects also use for rarest first statergy
+- **7.torrent.py :**  maintaining peers objects use for rarest first strategy
 
-- **8.torr_download.py :**  for handling the requested piece and chunks.
+- **8.download.py :**  handle the requested pieces and chunks
 
-- **9.Write_data.py :**  after completing the whole data, to write that data into the files  
+- **9.writedata.py :** write downloaded files to local
 
+## Installation & Setup
 
+1. Install the required depedencies
 
-
-**Installation Set up:**
-
+```python
 pip install -r requirements.txt
+```
 
-**To Run:**
+2. Run the torrent file
 
-python main.py FilePath
-
-
-
+```python
+python main.py <torrent_file>
+```
